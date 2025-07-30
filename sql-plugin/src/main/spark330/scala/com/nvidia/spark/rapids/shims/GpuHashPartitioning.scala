@@ -37,6 +37,7 @@
 {"spark": "353"}
 {"spark": "354"}
 {"spark": "355"}
+{"spark": "355odp"}
 {"spark": "356"}
 {"spark": "400"}
 {"spark": "401"}
@@ -64,7 +65,7 @@ case class GpuHashPartitioning(expressions: Seq[Expression], numPartitions: Int,
             c.areAllClusterKeysMatched(expressions)
           } else {
             expressions.forall(x => requiredClustering.exists(_.semanticEquals(x)))
-          }          
+          }
         case _ => false
       }
     }
