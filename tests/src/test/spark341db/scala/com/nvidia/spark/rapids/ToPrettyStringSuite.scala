@@ -23,6 +23,7 @@
 {"spark": "353"}
 {"spark": "354"}
 {"spark": "355"}
+{"spark": "355odp"}
 {"spark": "356"}
 {"spark": "400"}
 spark-rapids-shim-json-lines ***/
@@ -45,7 +46,7 @@ class ToPrettyStringSuite extends GpuUnitTests {
     val numRows = 100
     val inputRows = GpuBatchUtilsSuite.createRows(schema, numRows)
     val cpuOutput: Array[String] = inputRows.map {
-      input => 
+      input =>
         ToPrettyString(BoundReference(0, dataType, true), Some("UTC"))
         .eval(input).asInstanceOf[UTF8String].toString()
     }

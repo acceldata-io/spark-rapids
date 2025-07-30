@@ -37,6 +37,7 @@
 {"spark": "353"}
 {"spark": "354"}
 {"spark": "355"}
+{"spark": "355odp"}
 {"spark": "356"}
 {"spark": "400"}
 spark-rapids-shim-json-lines ***/
@@ -52,7 +53,7 @@ class RapidsOrcScanMeta(
     parent: Option[RapidsMeta[_, _, _]],
     rule: DataFromReplacementRule)
   extends ScanMeta[OrcScan](oScan, conf, parent, rule) {
-  
+
   override def tagSelfForGpu(): Unit = {
     GpuOrcScan.tagSupport(this)
     // we are being overly cautious and that Orc does not support this yet

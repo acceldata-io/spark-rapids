@@ -42,6 +42,7 @@
 {"spark": "353"}
 {"spark": "354"}
 {"spark": "355"}
+{"spark": "355odp"}
 {"spark": "356"}
 {"spark": "400"}
 spark-rapids-shim-json-lines ***/
@@ -282,7 +283,7 @@ abstract class GpuOrcDataReaderBase(
     }
   }
 
-  // [Scala 2.13] This is needed because org.apache.orc.DataReader defines a public clone() method 
+  // [Scala 2.13] This is needed because org.apache.orc.DataReader defines a public clone() method
   // which should be overidden here as a public member. The Scala 2.13 compiler enforces this now
   // which was a bug in the compiler previously.
   override def clone(): DataReader = {

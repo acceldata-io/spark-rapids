@@ -43,6 +43,7 @@
 {"spark": "353"}
 {"spark": "354"}
 {"spark": "355"}
+{"spark": "355odp"}
 {"spark": "356"}
 {"spark": "400"}
 spark-rapids-shim-json-lines ***/
@@ -65,11 +66,11 @@ import org.apache.spark.storage.BlockManagerId.SHUFFLE_MERGER_IDENTIFIER
 import org.apache.spark.storage.RapidsShuffleBlockFetcherIterator._
 
 /**
- * Taken mostly verbatim from `PushBasedFetchHelper` because of the type 
+ * Taken mostly verbatim from `PushBasedFetchHelper` because of the type
  * hierarchy (specific type for `iterator`).
  *
- *  Compare to https://github.com/apache/spark/blob/branch-3.2, and 
- *  https://github.com/apache/spark/blob/branch-3.3: 
+ *  Compare to https://github.com/apache/spark/blob/branch-3.2, and
+ *  https://github.com/apache/spark/blob/branch-3.3:
  *   ./core/src/main/scala/org/apache/spark/storage/PushBasedFetchHelper.scala
  */
 
