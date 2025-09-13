@@ -21,6 +21,7 @@
 {"spark": "353"}
 {"spark": "354"}
 {"spark": "355"}
+{"spark": "351odp"}
 {"spark": "356"}
 {"spark": "400"}
 spark-rapids-shim-json-lines ***/
@@ -60,7 +61,7 @@ object SparkShimImpl extends Spark340PlusNonDBShims {
         (toPrettyString, conf, p, r) => {
           new CastExprMetaBase[ToPrettyString](toPrettyString, conf, p, r) {
 
-            override def needTimeZoneCheck: Boolean = 
+            override def needTimeZoneCheck: Boolean =
               castNeedsTimeZone(toPrettyString.child.dataType, StringType)
 
             override val toType: StringType.type = StringType
@@ -69,7 +70,7 @@ object SparkShimImpl extends Spark340PlusNonDBShims {
               GpuToPrettyString(child)
             }
           }
-      }), 
+      }),
       GpuOverrides.expr[PythonUDAF](
         "UDF run in an external python process. Does not actually run on the GPU, but " +
           "the transfer of data to/from it can be accelerated",
