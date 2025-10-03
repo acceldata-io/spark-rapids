@@ -641,6 +641,7 @@
           </activation>
           <properties>
             <buildver>351odp</buildver>
+            <spark.version.classifier>spark351odp</spark.version.classifier>
             <spark.version>${spark351odp.version}</spark.version>
             <spark.test.version>${spark351odp.version}</spark.test.version>
             <parquet.hadoop.version>1.13.1</parquet.hadoop.version>
