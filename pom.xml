@@ -633,7 +633,6 @@
         <profile>
           <id>release351odp</id>
           <activation>
-            <activeByDefault>true</activeByDefault>
             <property>
               <name>buildver</name>
               <value>351odp</value>
@@ -730,6 +729,7 @@
         <profile>
             <id>release355odp</id>
             <activation>
+                <activeByDefault>true</activeByDefault>
                 <property>
                     <name>buildver</name>
                     <value>355odp</value>
