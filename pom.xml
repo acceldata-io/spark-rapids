@@ -758,6 +758,8 @@
                 <iceberg.version>${spark35x.iceberg.version}</iceberg.version>
                 <rapids.iceberg.artifactId>rapids-4-spark-iceberg</rapids.iceberg.artifactId>
                 <slf4j.version>2.0.7</slf4j.version>
+                <!-- Scala 2.12.18 needed to parse Arrow 18.x bytecode (compiled with Java 11+) -->
+                <scala.version>2.12.18</scala.version>
             </properties>
             <modules>
                 <module>delta-lake/delta-stub</module>
