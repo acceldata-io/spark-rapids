@@ -117,9 +117,9 @@ private final class PythonWorkerSemaphore(tasksPerGpu: Int) extends Logging {
   def releaseIfNecessary(context: TaskContext): Unit = {
     val taskAttemptId = context.taskAttemptId()
     val refs = activeTasks.get(taskAttemptId)
-    if (refs != null && refs.getValue > 0) {
+    if (refs != null && refs.intValue > 0) {
       logDebug(s"Task $taskAttemptId releasing GPU for python worker")
-      semaphore.release(refs.getValue)
+      semaphore.release(refs.intValue)
       refs.setValue(0)
     }
   }
@@ -130,9 +130,9 @@ private final class PythonWorkerSemaphore(tasksPerGpu: Int) extends Logging {
     if (refs == null) {
       throw new IllegalStateException(s"Completion of unknown task $taskAttemptId")
     }
-    if (refs.getValue > 0) {
+    if (refs.intValue > 0) {
       logDebug(s"Task $taskAttemptId releasing all GPU resources for python worker")
-      semaphore.release(refs.getValue)
+      semaphore.release(refs.intValue)
     }
   }
 
