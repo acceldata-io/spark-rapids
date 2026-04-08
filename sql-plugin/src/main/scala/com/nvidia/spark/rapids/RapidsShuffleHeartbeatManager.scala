@@ -18,6 +18,7 @@ package com.nvidia.spark.rapids
 
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 
+import scala.annotation.nowarn
 import scala.collection.mutable.ArrayBuffer
 
 import com.nvidia.spark.rapids.jni.RmmSpark
@@ -110,7 +111,8 @@ class RapidsShuffleHeartbeatManager(heartbeatIntervalMillis: Long,
       while (iter.hasNext && !done) {
         val entry = iter.next()
 
-        if (entry.registrationOrder >= lastRegistration.lastRegistrationOrderSeen.getValue) {
+        if (entry.registrationOrder >= (lastRegistration.lastRegistrationOrderSeen.getValue:
+            @nowarn("msg=getValue in class MutableLong is deprecated"))) {
           if (entry.id != id) {
             logDebug(s"Found new executor (to $id): $entry while handling a heartbeat.")
             newExecutors += entry.id
@@ -143,12 +145,14 @@ class RapidsShuffleHeartbeatManager(heartbeatIntervalMillis: Long,
   private def removeDeadExecutors(currentTime: Long): Unit = {
     val leastRecentHb = leastRecentHeartbeat.peek() // look at the executor that is lagging most
     if (leastRecentHb != null &&
-        isStaleHeartbeat(
-          executorRegistrations.get(leastRecentHb).lastHeartbeatMillis.getValue, currentTime)) {
+        (isStaleHeartbeat(
+          executorRegistrations.get(leastRecentHb).lastHeartbeatMillis.getValue,
+          currentTime): @nowarn("msg=getValue in class MutableLong is deprecated"))) {
       // make a new buffer of alive executors and replace the old one
       val aliveExecutors = new ArrayBuffer[ExecutorRegistration]()
       executors.foreach { e =>
-        if (isStaleHeartbeat(e.lastHeartbeatMillis.getValue, currentTime)) {
+        if ((isStaleHeartbeat(e.lastHeartbeatMillis.getValue,
+            currentTime): @nowarn("msg=getValue in class MutableLong is deprecated"))) {
           logDebug(s"Stale exec, removing $e")
           executorRegistrations.remove(e.id)
           leastRecentHeartbeat.remove(e.id)
