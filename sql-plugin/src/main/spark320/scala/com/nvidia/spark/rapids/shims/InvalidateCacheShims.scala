@@ -24,6 +24,7 @@
 {"spark": "331"}
 {"spark": "332"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 {"spark": "340"}
 {"spark": "341"}
@@ -32,10 +33,12 @@
 {"spark": "344"}
 {"spark": "350"}
 {"spark": "351"}
+{"spark": "351odp"}
 {"spark": "352"}
 {"spark": "353"}
 {"spark": "354"}
 {"spark": "355"}
+{"spark": "355odp"}
 {"spark": "356"}
 {"spark": "357"}
 {"spark": "400"}
@@ -52,7 +55,7 @@ import org.apache.spark.sql.connector.catalog.{Identifier, Table, TableCatalog}
  */
 object InvalidateCacheShims {
   type InvalidateCacheType = (TableCatalog, Table, Identifier) => Unit
-  
+
   def getInvalidateCache(
       cpuInvalidateCache: (TableCatalog, Table, Identifier) => Unit): InvalidateCacheType = {
     cpuInvalidateCache

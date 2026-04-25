@@ -29,6 +29,7 @@
 {"spark": "332cdh"}
 {"spark": "332db"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 {"spark": "340"}
 {"spark": "341"}
@@ -69,9 +70,9 @@ class ConcurrentWriterMetricsSuite extends SparkQueryCompareTestSuite {
         }
 
         checkMetrics("""
-                       |INSERT INTO TABLE t PARTITION(p) SELECT * 
+                       |INSERT INTO TABLE t PARTITION(p) SELECT *
                        |FROM VALUES(1, 'a'),(2, 'a'),(1, 'b')""".stripMargin, 2, 3)
-        
+
         checkMetrics("""
                        |INSERT INTO TABLE t PARTITION(p) SELECT *
                        |FROM VALUES(1, 'a'),(2, 'b'),(1, 'c'),(2, 'd')""".stripMargin, 4, 4)

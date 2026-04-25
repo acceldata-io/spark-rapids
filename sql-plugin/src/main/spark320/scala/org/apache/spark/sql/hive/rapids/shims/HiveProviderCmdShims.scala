@@ -28,6 +28,7 @@
 {"spark": "332"}
 {"spark": "332cdh"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 spark-rapids-shim-json-lines ***/
 package org.apache.spark.sql.hive.rapids.shims
@@ -75,6 +76,6 @@ trait HiveProviderCmdShims extends HiveProvider {
   ).map(r => (r.getClassFor.asSubclass(classOf[DataWritingCommand]), r)).toMap
 
   override def getRunnableCmds: Map[Class[_ <: RunnableCommand],
-      RunnableCommandRule[_ <: RunnableCommand]] = 
+      RunnableCommandRule[_ <: RunnableCommand]] =
     Map.empty
 }

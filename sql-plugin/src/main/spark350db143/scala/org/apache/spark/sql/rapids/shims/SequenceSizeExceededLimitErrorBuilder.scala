@@ -19,6 +19,7 @@
 {"spark": "400"}
 {"spark": "401"}
 {"spark": "411"}
+{"spark": "411odp"}
 spark-rapids-shim-json-lines ***/
 package org.apache.spark.sql.rapids.shims
 

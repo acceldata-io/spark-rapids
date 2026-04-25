@@ -30,6 +30,7 @@
 {"spark": "332cdh"}
 {"spark": "332db"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 spark-rapids-shim-json-lines ***/
 package org.apache.spark.sql.rapids
@@ -81,7 +82,7 @@ class RapidsCachingReader[K, C](
       val blocksForRapidsTransport =
           new ArrayBuffer[(BlockManagerId, Seq[(BlockId, Long, Int)])]()
       var cachedBatchIterator: Iterator[ColumnarBatch] = Iterator.empty
-      val blocksByAddressMap: Map[BlockManagerId, Seq[(BlockId, Long, Int)]] = 
+      val blocksByAddressMap: Map[BlockManagerId, Seq[(BlockId, Long, Int)]] =
           blocksByAddress.toMap
       var numCachedBlocks: Int = 0
 

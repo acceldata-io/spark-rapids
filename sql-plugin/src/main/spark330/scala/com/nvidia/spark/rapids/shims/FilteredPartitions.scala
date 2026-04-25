@@ -23,6 +23,7 @@
 {"spark": "332cdh"}
 {"spark": "332db"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 {"spark": "340"}
 {"spark": "341"}
@@ -33,15 +34,18 @@
 {"spark": "350"}
 {"spark": "350db143"}
 {"spark": "351"}
+{"spark": "351odp"}
 {"spark": "352"}
 {"spark": "353"}
 {"spark": "354"}
 {"spark": "355"}
+{"spark": "355odp"}
 {"spark": "356"}
 {"spark": "357"}
 {"spark": "400"}
 {"spark": "401"}
 {"spark": "411"}
+{"spark": "411odp"}
 spark-rapids-shim-json-lines ***/
 package com.nvidia.spark.rapids.shims
 

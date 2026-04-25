@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
+
 /*** spark-rapids-shim-json-lines
 {"spark": "400"}
 {"spark": "401"}
 {"spark": "411"}
+{"spark": "411odp"}
 spark-rapids-shim-json-lines ***/
-
 package com.nvidia.spark.rapids.shims
 
 import org.apache.spark.sql.catalyst.util.SparkDateTimeUtils

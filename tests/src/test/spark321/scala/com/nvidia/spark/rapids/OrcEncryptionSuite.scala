@@ -23,6 +23,7 @@
 {"spark": "331"}
 {"spark": "332"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 {"spark": "340"}
 {"spark": "341"}
@@ -66,6 +67,7 @@ class OrcEncryptionSuite extends SparkQueryCompareTestSuite {
         case SparkShimVersion(major, minor, _) => major == 3 && minor != 1
         case DatabricksShimVersion(major, minor, _, _) => major == 3 && minor != 1
         case ClouderaShimVersion(major, minor, _, _) => major == 3 && minor != 1
+        case AcceldataShimVersion(major, minor, _, _) => major == 3 && minor != 1
         case _ => true
       }
       assume(isValidTestForSparkVersion)

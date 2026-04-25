@@ -171,6 +171,50 @@
                 </dependency>
             </dependencies>
         </profile>
+        <profile>
+            <id>release351odp</id>
+            <activation>
+                <property>
+                    <name>buildver</name>
+                    <value>351odp</value>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.parquet</groupId>
+                    <artifactId>parquet-common</artifactId>
+                    <version>${parquet.hadoop.version}</version>
+                    <scope>test</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.parquet</groupId>
+                    <artifactId>parquet-common</artifactId>
+                    <version>${parquet.hadoop.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>release355odp</id>
+            <activation>
+                <property>
+                    <name>buildver</name>
+                    <value>355odp</value>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.parquet</groupId>
+                    <artifactId>parquet-common</artifactId>
+                    <version>${parquet.hadoop.version}</version>
+                    <scope>test</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.parquet</groupId>
+                    <artifactId>parquet-common</artifactId>
+                    <version>${parquet.hadoop.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
         <!-- #if scala-2.13 -->
         <profile>
             <id>release400</id>
@@ -214,7 +258,7 @@
                                 <goals>
                                     <goal>test</goal>
                                 </goals>
-                            </execution>                            
+                            </execution>
                         </executions>
                     </plugin>
                 </plugins>
