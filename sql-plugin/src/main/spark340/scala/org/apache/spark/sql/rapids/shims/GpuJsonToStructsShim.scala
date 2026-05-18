@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2026, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,11 @@
 {"spark": "355"}
 {"spark": "355odp"}
 {"spark": "356"}
+{"spark": "357"}
 {"spark": "400"}
+{"spark": "401"}
+{"spark": "411"}
+{"spark": "411odp"}
 spark-rapids-shim-json-lines ***/
 package org.apache.spark.sql.rapids.shims
 
@@ -52,7 +56,7 @@ object GpuJsonToStructsShim {
         // legacy behavior
         withResource(Scalar.fromString(" ")) { space =>
           withResource(input.strip(space)) { trimmed =>
-            GpuCast.castStringToDate(trimmed)
+            GpuCast.castStringToDate(trimmed, ansiMode = false)
           }
         }
       case Some(f) =>
@@ -70,7 +74,7 @@ object GpuJsonToStructsShim {
       case None =>
         // legacy behavior
         withResource(input.strip()) { trimmed =>
-          GpuCast.castStringToDateAnsi(trimmed, ansiMode =
+          GpuCast.castStringToDate(trimmed, ansiMode =
             GpuOverrides.getTimeParserPolicy == ExceptionTimeParserPolicy)
         }
       case Some(f) =>

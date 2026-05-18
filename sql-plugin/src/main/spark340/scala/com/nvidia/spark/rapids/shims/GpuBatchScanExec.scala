@@ -30,10 +30,12 @@
 {"spark": "355"}
 {"spark": "355odp"}
 {"spark": "356"}
+{"spark": "357"}
 spark-rapids-shim-json-lines ***/
 package com.nvidia.spark.rapids.shims
 
 import com.google.common.base.Objects
+import com.nvidia.spark.rapids.AssertUtils.assertInTests
 import com.nvidia.spark.rapids.GpuScan
 
 import org.apache.spark.SparkException
@@ -157,7 +159,7 @@ case class GpuBatchScanExec(
         case p: KeyGroupedPartitioning =>
           if (conf.v2BucketingPushPartValuesEnabled &&
             conf.v2BucketingPartiallyClusteredDistributionEnabled) {
-            assert(filteredPartitions.forall(_.size == 1),
+            assertInTests(filteredPartitions.forall(_.size == 1),
               "Expect partitions to be not grouped when " +
                 s"${SQLConf.V2_BUCKETING_PARTIALLY_CLUSTERED_DISTRIBUTION_ENABLED.key} " +
                 "is enabled")

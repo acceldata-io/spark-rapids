@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2026, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@ package org.apache.spark.sql.rapids
 import java.{lang => jl}
 import java.io.ObjectInputStream
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
-
-import scala.collection.mutable
+import java.util.concurrent.atomic.AtomicLong
 
 import ai.rapids.cudf.{NvtxColor, NvtxRange}
 import com.nvidia.spark.rapids.{NvtxId, NvtxRegistry}
@@ -60,13 +60,13 @@ case class SizeInBytes(value: jl.Long) {
       unitVal = nextUnitVal
       unitIndex += 1
     }
-    val finalVal = (unitVal + (remainVal.toDouble / 1024)).formatted("%.2f")
+    val finalVal = "%.2f".format(unitVal + (remainVal.toDouble / 1024))
     s"$finalVal${SizeInBytes.SizeUnitNames(unitIndex)} ($value bytes)"
   }
 }
 
 private object SizeInBytes {
-  private val SizeUnitNames: Array[String] = Array("B", "KB", "MB", "GB", "TB")
+  private val SizeUnitNames: Array[String] = Array("B", "KB", "MB", "GB", "TB", "PB", "EB")
 }
 
 class NanoSecondAccumulator extends AccumulatorV2[jl.Long, NanoTime] {
@@ -101,6 +101,41 @@ class NanoSecondAccumulator extends AccumulatorV2[jl.Long, NanoTime] {
   }
 
   override def value: NanoTime = NanoTime(_sum)
+}
+
+/**
+ * Accumulator to sum up size in bytes, almost identical to LongAccumulator but with
+ * a user-friendly representation of the value.
+ */
+class SizeInBytesAccumulator extends AccumulatorV2[jl.Long, SizeInBytes] {
+  private var _sum = 0L
+  override def isZero: Boolean = _sum == 0
+
+  override def copy(): SizeInBytesAccumulator = {
+    val newAcc = new SizeInBytesAccumulator
+    newAcc._sum = this._sum
+    newAcc
+  }
+
+  override def reset(): Unit = {
+    _sum = 0
+  }
+
+  override def add(v: jl.Long): Unit = {
+    _sum += v
+  }
+
+  override def merge(other: AccumulatorV2[jl.Long, SizeInBytes]): Unit = other match {
+    case sb: SizeInBytesAccumulator =>
+      _sum += sb._sum
+    case _ =>
+      throw new UnsupportedOperationException(
+        s"Cannot merge ${this.getClass.getName} with ${other.getClass.getName}")
+  }
+
+  override def value: SizeInBytes = SizeInBytes(_sum)
+
+  private[spark] def setValue(newValue: Long): Unit = _sum = newValue
 }
 
 class HighWatermarkAccumulator extends AccumulatorV2[jl.Long, SizeInBytes] {
@@ -207,7 +242,7 @@ class AvgLongAccumulator extends AccumulatorV2[jl.Long, jl.Double] {
   } else 0;
 }
 
-class GpuTaskMetrics extends Serializable {
+class GpuTaskMetrics extends Serializable with Logging {
   private val semaphoreHoldingTime = new NanoSecondAccumulator
   private val semWaitTimeNs = new NanoSecondAccumulator
   private val retryCount = new LongAccumulator
@@ -221,12 +256,19 @@ class GpuTaskMetrics extends Serializable {
   private val onGpuTasksInWaitingQueueAvgCount = new AvgLongAccumulator
   private val onGpuTasksInWaitingQueueMaxCount = new MaxLongAccumulator
 
+  // This is used to track the max parallelism of multithreaded readers
+  private val multithreadReaderMaxParallelism = new MaxLongAccumulator
+
+  // This is used to track the maximum concurrent tasks in PrioritySemaphore
+  private val maxConcurrentGpuTasks = new MaxLongAccumulator
 
   // Spill
   private val spillToHostTimeNs = new NanoSecondAccumulator
   private val spillToDiskTimeNs = new NanoSecondAccumulator
   private val readSpillFromHostTimeNs = new NanoSecondAccumulator
   private val readSpillFromDiskTimeNs = new NanoSecondAccumulator
+  private val spillToHostBytes = new SizeInBytesAccumulator
+  private val spillToDiskBytes = new SizeInBytesAccumulator
 
   private val maxDeviceMemoryBytes = new HighWatermarkAccumulator
   private val maxHostMemoryBytes = new HighWatermarkAccumulator
@@ -234,7 +276,10 @@ class GpuTaskMetrics extends Serializable {
   private val maxPinnedMemoryBytes = new HighWatermarkAccumulator
   private val maxDiskMemoryBytes = new HighWatermarkAccumulator
 
-  private val maxGpuFootprint = new LongAccumulator
+  private val maxGpuFootprint = new SizeInBytesAccumulator
+
+  // Disk write savings from SpillablePartialFileHandle
+  private val diskWriteSavedBytes = new LongAccumulator
 
   private var maxHostBytesAllocated: Long = 0
   private var maxPageableBytesAllocated: Long = 0
@@ -242,22 +287,23 @@ class GpuTaskMetrics extends Serializable {
 
   private var maxDiskBytesAllocated: Long = 0
 
-  def getDiskBytesAllocated: Long = GpuTaskMetrics.diskBytesAllocated
+  def getDiskBytesAllocated: Long = GpuTaskMetrics.diskBytesAllocated.get()
 
   def getMaxDiskBytesAllocated: Long = maxDiskBytesAllocated
 
-  def getHostBytesAllocated: Long = GpuTaskMetrics.hostBytesAllocated
+  def getHostBytesAllocated: Long = GpuTaskMetrics.hostBytesAllocated.get()
 
   def getMaxHostBytesAllocated: Long = maxHostBytesAllocated
 
   def incHostBytesAllocated(bytes: Long, isPinned: Boolean): Unit = {
     GpuTaskMetrics.incHostBytesAllocated(bytes, isPinned)
-    maxHostBytesAllocated = maxHostBytesAllocated.max(GpuTaskMetrics.hostBytesAllocated)
+    maxHostBytesAllocated = maxHostBytesAllocated.max(GpuTaskMetrics.hostBytesAllocated.get())
     if (isPinned) {
-      maxPinnedBytesAllocated = maxPinnedBytesAllocated.max(GpuTaskMetrics.pinnedBytesAllocated)
+      maxPinnedBytesAllocated =
+        maxPinnedBytesAllocated.max(GpuTaskMetrics.pinnedBytesAllocated.get())
     } else {
       maxPageableBytesAllocated = maxPageableBytesAllocated.max(
-        GpuTaskMetrics.pageableBytesAllocated)
+        GpuTaskMetrics.pageableBytesAllocated.get())
     }
   }
 
@@ -267,7 +313,7 @@ class GpuTaskMetrics extends Serializable {
 
   def incDiskBytesAllocated(bytes: Long): Unit = {
     GpuTaskMetrics.incDiskBytesAllocated(bytes)
-    maxDiskBytesAllocated = maxDiskBytesAllocated.max(GpuTaskMetrics.diskBytesAllocated)
+    maxDiskBytesAllocated = maxDiskBytesAllocated.max(GpuTaskMetrics.diskBytesAllocated.get())
   }
 
   def decDiskBytesAllocated(bytes: Long): Unit = {
@@ -285,6 +331,8 @@ class GpuTaskMetrics extends Serializable {
     "gpuSpillToDiskTime" -> spillToDiskTimeNs,
     "gpuReadSpillFromHostTime" -> readSpillFromHostTimeNs,
     "gpuReadSpillFromDiskTime" -> readSpillFromDiskTimeNs,
+    "gpuSpillToHostBytes" -> spillToHostBytes,
+    "gpuSpillToDiskBytes" -> spillToDiskBytes,
     "gpuMaxDeviceMemoryBytes" -> maxDeviceMemoryBytes,
     "gpuMaxHostMemoryBytes" -> maxHostMemoryBytes,
     "gpuMaxDiskMemoryBytes" -> maxDiskMemoryBytes,
@@ -292,7 +340,10 @@ class GpuTaskMetrics extends Serializable {
     "gpuMaxPinnedMemoryBytes" -> maxPinnedMemoryBytes,
     "gpuOnGpuTasksWaitingGPUAvgCount" -> onGpuTasksInWaitingQueueAvgCount,
     "gpuOnGpuTasksWaitingGPUMaxCount" -> onGpuTasksInWaitingQueueMaxCount,
-    "gpuMaxTaskFootprint" -> maxGpuFootprint
+    "gpuMaxTaskFootprint" -> maxGpuFootprint,
+    "multithreadReaderMaxParallelism" -> multithreadReaderMaxParallelism,
+    "gpuMaxConcurrentGpuTasks" -> maxConcurrentGpuTasks,
+    "gpuDiskWriteSavedBytes" -> diskWriteSavedBytes
   )
 
   def register(sc: SparkContext): Unit = {
@@ -366,6 +417,14 @@ class GpuTaskMetrics extends Serializable {
     timeIt(readSpillFromDiskTimeNs, "readSpillFromDiskTime", NvtxColor.ORANGE, f)
   }
 
+  def recordSpillToHost(sizeInBytes: Long): Unit = {
+    spillToHostBytes.add(sizeInBytes)
+  }
+
+  def recordSpillToDisk(sizeInBytes: Long): Unit = {
+    spillToDiskBytes.add(sizeInBytes)
+  }
+
   def updateRetry(taskAttemptId: Long): Unit = {
     val rc = RmmSpark.getAndResetNumRetryThrow(taskAttemptId)
     if (rc > 0) {
@@ -396,6 +455,9 @@ class GpuTaskMetrics extends Serializable {
       // once on task completion, whereas the actual logic tracking of the max value during memory
       // allocations lives in the JNI. Therefore, we can stick the convention here of calling the
       // add method instead of adding a dedicated max method to the accumulator.
+      if (maxDeviceMemoryBytes.value.value > 0) {
+        logError(s"updateMaxMemory called twice for task $taskAttemptId with maxMem $maxMem")
+      }
       maxDeviceMemoryBytes.add(maxMem)
     }
     if (maxHostBytesAllocated > 0) {
@@ -423,65 +485,74 @@ class GpuTaskMetrics extends Serializable {
     onGpuTasksInWaitingQueueAvgCount.add(num)
     onGpuTasksInWaitingQueueMaxCount.add(num)
   }
+
+  def recordConcurrentGpuTasks(currentConcurrentTasks: Long): Unit = {
+    maxConcurrentGpuTasks.add(currentConcurrentTasks)
+  }
+
+  def updateMultithreadReaderMaxParallelism(parallelism: Long): Unit = {
+    multithreadReaderMaxParallelism.add(parallelism)
+  }
+
+  def addDiskWriteSaved(bytes: Long): Unit = {
+    diskWriteSavedBytes.add(bytes)
+  }
 }
 
 /**
  * Provides task level metrics
  */
 object GpuTaskMetrics extends Logging {
-  private val taskLevelMetrics = mutable.Map[Long, GpuTaskMetrics]()
+  private val taskLevelMetrics = new ConcurrentHashMap[Long, GpuTaskMetrics]()
 
-  private var hostBytesAllocated: Long = 0
-  private var pageableBytesAllocated: Long = 0
-  private var pinnedBytesAllocated: Long = 0
-  private var diskBytesAllocated: Long = 0
+  private val hostBytesAllocated = new AtomicLong(0)
+  private val pageableBytesAllocated = new AtomicLong(0)
+  private val pinnedBytesAllocated = new AtomicLong(0)
+  private val diskBytesAllocated = new AtomicLong(0)
 
-  private def incHostBytesAllocated(bytes: Long, isPinned: Boolean): Unit = synchronized {
-    hostBytesAllocated += bytes
+  private def incHostBytesAllocated(bytes: Long, isPinned: Boolean): Unit = {
+    hostBytesAllocated.addAndGet(bytes)
     if (isPinned) {
-      pinnedBytesAllocated += bytes
+      pinnedBytesAllocated.addAndGet(bytes)
     } else {
-      pageableBytesAllocated += bytes
+      pageableBytesAllocated.addAndGet(bytes)
     }
   }
 
-  private def decHostBytesAllocated(bytes: Long, isPinned: Boolean): Unit = synchronized {
-    hostBytesAllocated -= bytes
+  private def decHostBytesAllocated(bytes: Long, isPinned: Boolean): Unit = {
+    hostBytesAllocated.addAndGet(-bytes)
     if (isPinned) {
-      pinnedBytesAllocated -= bytes
+      pinnedBytesAllocated.addAndGet(-bytes)
     } else {
-      pageableBytesAllocated -= bytes
+      pageableBytesAllocated.addAndGet(-bytes)
     }
   }
 
-  def incDiskBytesAllocated(bytes: Long): Unit = synchronized {
-    diskBytesAllocated += bytes
+  def incDiskBytesAllocated(bytes: Long): Unit = {
+    diskBytesAllocated.addAndGet(bytes)
   }
 
-  def decDiskBytesAllocated(bytes: Long): Unit = synchronized {
-    diskBytesAllocated -= bytes
+  def decDiskBytesAllocated(bytes: Long): Unit = {
+    diskBytesAllocated.addAndGet(-bytes)
   }
 
-  def registerOnTask(metrics: GpuTaskMetrics): Unit = synchronized {
+  def registerOnTask(metrics: GpuTaskMetrics): Unit = {
     val tc = TaskContext.get()
     if (tc != null) {
       val id = tc.taskAttemptId()
       // avoid double registering the task metrics...
-      if (!taskLevelMetrics.contains(id)) {
-        taskLevelMetrics.put(id, metrics)
+      if (taskLevelMetrics.putIfAbsent(id, metrics) == null) {
         onTaskCompletion(tc, tc =>
-          synchronized {
-            taskLevelMetrics.remove(tc.taskAttemptId())
-          }
+          taskLevelMetrics.remove(tc.taskAttemptId())
         )
       }
     }
   }
 
-  def get: GpuTaskMetrics = synchronized {
+  def get: GpuTaskMetrics = {
     val tc = TaskContext.get()
     val metrics = if (tc != null) {
-      taskLevelMetrics.get(tc.taskAttemptId())
+      Option(taskLevelMetrics.get(tc.taskAttemptId()))
     } else {
       None
     }

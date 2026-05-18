@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024, NVIDIA CORPORATION.
+ * Copyright (c) 2022-2025, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@
 {"spark": "332"}
 {"spark": "332cdh"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 spark-rapids-shim-json-lines ***/
 package com.nvidia.spark.rapids.shims
@@ -120,7 +121,7 @@ object DecimalArithmeticOverrides {
         private[this] lazy val rhsDecimalType =
           DecimalUtil.asDecimalType(rhs.wrapped.asInstanceOf[Expression].dataType)
 
-        override def convertToGpu(): GpuExpression = {
+        override def convertToGpuImpl(): GpuExpression = {
           // Prior to Spark 3.4.0
           // Division and Multiplication of Decimal types is a little odd. Spark will cast the
           // inputs to a common wider value where the scale is the max of the two input scales,
@@ -159,8 +160,16 @@ object DecimalArithmeticOverrides {
         ("rhs", TypeSig.gpuNumeric, TypeSig.cpuNumeric)),
       (a, conf, p, r) => new BinaryAstExprMeta[Multiply](a, conf, p, r) {
         override def tagExprForGpu(): Unit = {
+          // Check if this Multiply expression is in TRY mode context
+          if (TryModeShim.isTryMode(a)) {
+            willNotWorkOnGpu("try_multiply is not supported on GPU")
+          }
+        }
+
+        override def tagSelfForAst(): Unit = {
+          super.tagSelfForAst();
           if (SQLConf.get.ansiEnabled && GpuAnsi.needBasicOpOverflowCheck(a.dataType)) {
-            willNotWorkOnGpu("GPU Multiplication does not support ANSI mode")
+            willNotWorkInAst("GPU AST multiplication does not support ANSI mode")
           }
         }
 
@@ -185,6 +194,13 @@ object DecimalArithmeticOverrides {
       (a, conf, p, r) => new BinaryExprMeta[Divide](a, conf, p, r) {
         // Division of Decimal types is a little odd. To work around some issues with
         // what Spark does the tagging/checks are in CheckOverflow instead of here.
+        override def tagExprForGpu(): Unit = {
+          // Check if this Divide expression is in TRY mode context
+          if (TryModeShim.isTryMode(a)) {
+            willNotWorkOnGpu("try_divide is not supported on GPU")
+          }
+        }
+
         override def convertToGpu(lhs: Expression, rhs: Expression): GpuExpression =
           a.dataType match {
             case _: DecimalType =>
@@ -211,6 +227,13 @@ object DecimalArithmeticOverrides {
         ("lhs", TypeSig.gpuNumeric, TypeSig.cpuNumeric),
         ("rhs", TypeSig.gpuNumeric, TypeSig.cpuNumeric)),
       (a, conf, p, r) => new BinaryExprMeta[Remainder](a, conf, p, r) {
+        override def tagExprForGpu(): Unit = {
+          // Check if this Remainder expression is in TRY mode context
+          if (TryModeShim.isTryMode(a)) {
+            willNotWorkOnGpu("try_mod is not supported on GPU")
+          }
+        }
+
         override def convertToGpu(lhs: Expression, rhs: Expression): GpuExpression =
           GpuRemainder(lhs, rhs)
       })

@@ -15,6 +15,7 @@
 import pytest
 
 allow_non_gpu_databricks = pytest.mark.allow_non_gpu_databricks
+allow_non_gpu_conditional = pytest.mark.allow_non_gpu_conditional
 allow_non_gpu = pytest.mark.allow_non_gpu
 disable_ansi_mode = pytest.mark.disable_ansi_mode
 validate_execs_in_gpu_plan = pytest.mark.validate_execs_in_gpu_plan
@@ -36,3 +37,9 @@ pyarrow_test = pytest.mark.pyarrow_test
 datagen_overrides = pytest.mark.datagen_overrides
 tz_sensitive_test = pytest.mark.tz_sensitive_test
 hybrid_test = pytest.mark.hybrid_test
+
+# Specific mark for allowing non-GPU Delta writes based on certain conditions.
+# Use this mark instead of `allow_non_gpu` for Delta writes when you want to
+# allow them to fall back. `allow_non_gpu` is not usable in this case as Delta
+# writes do not appear in the query plan.
+allow_non_gpu_delta_write_if = pytest.mark.allow_non_gpu_delta_write_if

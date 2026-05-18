@@ -17,7 +17,10 @@ import os.path
 import pytest
 import re
 
-from spark_session import is_databricks122_or_later, supports_delta_lake_deletion_vectors, is_databricks143_or_later
+from spark_session import is_databricks122_or_later, supports_delta_lake_deletion_vectors, is_databricks143_or_later, \
+    with_cpu_session, with_gpu_session
+from asserts import assert_equal
+from conftest import spark_jvm
 
 delta_meta_allow = [
     "DeserializeToObjectExec",
@@ -31,6 +34,8 @@ delta_meta_allow = [
     "SerializeFromObjectExec",
     "SortExec"
 ]
+
+delta_write = ["RapidsDeltaWrite"]
 
 # Disable Deletion Vectors except for Databricks 14.3
 def deletion_vector_values_with_350DB143_xfail_reasons(enabled_xfail_reason=None, disabled_xfail_reason=None):
@@ -66,7 +71,10 @@ def _fixup_operation_metrics(opm):
     # between CPU and GPU.
     metrics_to_remove = ["executionTimeMs", "numOutputBytes", "rewriteTimeMs", "scanTimeMs",
                          "numRemovedBytes", "numAddedBytes", "numTargetBytesAdded", "numTargetBytesInserted",
-                         "numTargetBytesUpdated", "numTargetBytesRemoved"]
+                         "numTargetBytesUpdated", "numTargetBytesRemoved", "materializeSourceTimeMs",
+                         # For OPTIMIZE command, file size distribution can legitimately differ
+                         # across CPU and GPU implementations. Ignore percentile and min/max metrics.
+                         "p25FileSize", "p50FileSize", "p75FileSize", "minFileSize", "maxFileSize"]
     for k in metrics_to_remove:
         opm.pop(k, None)
 
@@ -83,6 +91,17 @@ def _fixup_operation_parameters(opp):
             subbed = TMP_TABLE_PATH_PATTERN.sub("tmp_table", subbed)
             opp[key] = REF_ID_PATTERN.sub("#refid", subbed)
 
+def assert_delta_history_equal(conf, cpu_table, gpu_table):
+    # Project all columns except for the `timestamp` column, which won't match between CPU and GPU.
+    cols = ["version", "userId", "userName", "operation", "operationParameters", "job", "notebook",
+            "clusterId", "readVersion", "isolationLevel", "isBlindAppend", "operationMetrics", "userMetadata"]
+    cpu_history = with_cpu_session(lambda spark: spark.sql("DESCRIBE HISTORY {}".format(cpu_table))
+                                   .select(cols).collect(), conf=conf)
+    gpu_history = with_cpu_session(lambda spark: spark.sql("DESCRIBE HISTORY {}".format(gpu_table))
+                                   .select(cols).collect(), conf=conf)
+    assert_equal(cpu_history, gpu_history)
+
+
 def assert_delta_log_json_equivalent(filename, c_json, g_json):
     assert c_json.keys() == g_json.keys(), "Delta log {} has mismatched keys:\nCPU: {}\nGPU: {}".format(filename, c_json, g_json)
     def fixup_path(d):
@@ -98,7 +117,7 @@ def assert_delta_log_json_equivalent(filename, c_json, g_json):
         # Strip out the values that are expected to be different
         c_tags = c_val.get("tags", {})
         g_tags = g_val.get("tags", {})
-        del_keys(["INSERTION_TIME", "MAX_INSERTION_TIME", "MIN_INSERTION_TIME"], c_tags, g_tags)
+        del_keys(["INSERTION_TIME", "MAX_INSERTION_TIME", "MIN_INSERTION_TIME", "ZCUBE_ID"], c_tags, g_tags)
         if key == "metaData":
             assert c_val.keys() == g_val.keys(), "Delta log {} 'metaData' keys mismatch:\nCPU: {}\nGPU: {}".format(filename, c_val, g_val)
             del_keys(("createdTime", "id"), c_val, g_val)
@@ -168,14 +187,19 @@ def read_delta_path(spark, path):
     return spark.read.format("delta").load(path)
 
 def read_delta_path_with_cdf(spark, path):
-    return spark.read.format("delta") \
-        .option("readChangeDataFeed", "true").option("startingVersion", 0) \
-        .load(path).drop("_commit_timestamp")
+    df = spark.read.format("delta") \
+        .option("readChangeFeed", "true").option("startingVersion", 0) \
+        .load(path)
+    assert "_change_type" in df.columns
+    assert "_commit_version" in df.columns
+    assert "_commit_timestamp" in df.columns
+    # Drop the commit timestamp column since it will differ between CPU and GPU
+    return df.drop("_commit_timestamp")
 
 def schema_to_ddl(spark, schema):
     return spark.sparkContext._jvm.org.apache.spark.sql.types.DataType.fromJson(schema.json()).toDDL()
 
-def setup_delta_dest_table(spark, path, dest_table_func, use_cdf, partition_columns=None, enable_deletion_vectors=False):
+def setup_delta_dest_table(spark, path, dest_table_func, use_cdf, partition_columns=None, enable_deletion_vectors=False, options=None):
     dest_df = dest_table_func(spark)
     # append to SQL-created table
     writer = dest_df.write.format("delta").mode("append")
@@ -191,6 +215,9 @@ def setup_delta_dest_table(spark, path, dest_table_func, use_cdf, partition_colu
         writer = writer.partitionBy(*partition_columns)
     properties = ', '.join(key + ' = ' + value for key, value in table_properties.items())
     sql_text += " TBLPROPERTIES ({})".format(properties)
+    if options:
+        options_str = ', '.join(key + ' = ' + value for key, value in options.items())
+        sql_text += f" OPTIONS ({options_str}) "
     spark.sql(sql_text)
     writer.save(path)
 
@@ -198,3 +225,41 @@ def setup_delta_dest_tables(spark, data_path, dest_table_func, use_cdf, enable_d
     for name in ["CPU", "GPU"]:
         path = "{}/{}".format(data_path, name)
         setup_delta_dest_table(spark, path, dest_table_func, use_cdf, partition_columns, enable_deletion_vectors)
+
+def assert_rapids_delta_write(do_test, conf):
+    """
+    Validates that a Delta write operation executed on the GPU produces the expected execution plans.
+    This function starts a plan capture mechanism using the Spark JVM's ExecutionPlanCaptureCallback,
+    runs the provided test function (`do_test`) within a GPU session, and collects the execution plans
+    generated during the write operation. It then checks that each expected Delta write class is present
+    in at least one captured plan.
+
+    Parameters
+    ----------
+    do_test : callable
+        A function that performs the Delta write operation to be validated.
+    conf : dict
+        A dictionary of configuration options to be passed to the GPU session.
+
+    Returns
+    -------
+    result : Any
+        The result returned by the `do_test` function.
+    """
+    jvm = spark_jvm()
+    jvm.org.apache.spark.sql.rapids.ExecutionPlanCaptureCallback.startCapture()
+    try:
+        result = with_gpu_session(do_test, conf=conf)
+        captured_plans = jvm.org.apache.spark.sql.rapids.ExecutionPlanCaptureCallback.getResultsWithTimeout(10000)
+        # Some write functions are no-op. We may not capture any GPU plan.
+        if len(captured_plans) > 0:
+            for cls in delta_write:
+                found = False
+                for plan in captured_plans:
+                    found = jvm.org.apache.spark.sql.rapids.ExecutionPlanCaptureCallback.contains(plan, cls)
+                    if found:
+                        break
+                assert found, f"{cls} is not found in any captured plan"
+        return result
+    finally:
+        jvm.org.apache.spark.sql.rapids.ExecutionPlanCaptureCallback.endCapture()

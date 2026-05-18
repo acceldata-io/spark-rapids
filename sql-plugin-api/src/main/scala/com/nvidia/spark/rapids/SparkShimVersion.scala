@@ -39,3 +39,8 @@ case class DatabricksShimVersion(
     dbver: String = "") extends ShimVersion {
   override def toString(): String = s"$major.$minor.$patch-databricks$dbver"
 }
+
+case class AcceldataShimVersion(major: Int, minor: Int, patch: Int, acceldataVersion: String)
+  extends ShimVersion {
+  override def toString(): String = s"$major.$minor.$patch-acceldata-$acceldataVersion"
+}

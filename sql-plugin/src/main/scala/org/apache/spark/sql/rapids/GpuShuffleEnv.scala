@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2026, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import java.util.Locale
 import com.nvidia.spark.rapids._
 import com.nvidia.spark.rapids.shims.ShuffleManagerShimUtils
 
-import org.apache.spark.SparkEnv
+import org.apache.spark.{SparkConf, SparkEnv}
 import org.apache.spark.internal.Logging
 
 class GpuShuffleEnv(rapidsConf: RapidsConf) extends Logging {
@@ -30,10 +30,8 @@ class GpuShuffleEnv(rapidsConf: RapidsConf) extends Logging {
 
   private lazy val conf = SparkEnv.get.conf
 
-  private lazy val isRapidsShuffleConfigured: Boolean = {
-    conf.contains("spark.shuffle.manager") &&
-      conf.get("spark.shuffle.manager") == GpuShuffleEnv.RAPIDS_SHUFFLE_CLASS
-  }
+  private lazy val isRapidsShuffleConfigured: Boolean =
+    GpuShuffleEnv.isRapidsShuffleConfigured(conf)
 
   lazy val rapidsShuffleCodec: Option[TableCompressionCodec] = {
     val codecName = rapidsConf.shuffleCompressionCodec.toLowerCase(Locale.ROOT)
@@ -71,6 +69,16 @@ object GpuShuffleEnv extends Logging {
 
   val RAPIDS_SHUFFLE_CLASS: String = ShimLoader.getRapidsShuffleManagerClass
 
+  /**
+   * Check if the RAPIDS shuffle manager is configured via spark.shuffle.manager
+   * and matches the current shim. This check doesn't require the shuffle manager
+   * to be instantiated yet.
+   */
+  def isRapidsShuffleConfigured(sparkConf: SparkConf): Boolean = {
+    sparkConf.contains("spark.shuffle.manager") &&
+      sparkConf.get("spark.shuffle.manager") == RAPIDS_SHUFFLE_CLASS
+  }
+
   @volatile private var env: GpuShuffleEnv = _
 
   def shutdown() = {
@@ -98,6 +106,16 @@ object GpuShuffleEnv extends Logging {
   def isSparkAuthenticateEnabled: Boolean = {
     val conf = SparkEnv.get.conf
     conf.getBoolean("spark.authenticate", false)
+  }
+
+  // Returns true if row-based checksum is enabled, which is not supported
+  // by the RAPIDS Shuffle Manager
+  def isRowBasedChecksumEnabled: Boolean = {
+    val conf = SparkEnv.get.conf
+    // Row-based checksum feature was added in Spark 4.1.x (SPARK-51756).
+    // Fully supporting this feature would require kernel development to compute
+    // checksums on the GPU side.
+    conf.getBoolean("spark.shuffle.checksum.enabled", false)
   }
 
   //
@@ -169,10 +187,9 @@ object GpuShuffleEnv extends Logging {
   }
 
   private def validateRapidsShuffleManager(shuffManagerClassName: String): Unit = {
-    val shuffleManagerStr = ShimLoader.getRapidsShuffleManagerClass
-    if (shuffManagerClassName != shuffleManagerStr) {
+    if (shuffManagerClassName != RAPIDS_SHUFFLE_CLASS) {
       throw new IllegalStateException(s"RapidsShuffleManager class mismatch (" +
-          s"${shuffManagerClassName} != $shuffleManagerStr). " +
+          s"${shuffManagerClassName} != $RAPIDS_SHUFFLE_CLASS). " +
           s"Check that configuration setting spark.shuffle.manager is correct for the Spark " +
           s"version being used.")
     }

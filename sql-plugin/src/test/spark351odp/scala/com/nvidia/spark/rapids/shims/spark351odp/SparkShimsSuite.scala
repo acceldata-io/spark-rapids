@@ -20,11 +20,12 @@ spark-rapids-shim-json-lines ***/
 package com.nvidia.spark.rapids.shims.spark351odp
 
 import com.nvidia.spark.rapids._
+import com.nvidia.spark.rapids.AcceldataShimVersion
 import org.scalatest.funsuite.AnyFunSuite
 
 class SparkShimsSuite extends AnyFunSuite with FQSuiteName {
   test("spark shims version") {
-    assert(ShimLoader.getShimVersion === AcceldataShimVersion(3, 5, 1, "3.3.6.3-SNAPSHOT"))
+    assert(ShimLoader.getShimVersion === AcceldataShimVersion(3, 5, 1, "3.3.6.4-1"))
   }
 
   test("shuffle manager class") {

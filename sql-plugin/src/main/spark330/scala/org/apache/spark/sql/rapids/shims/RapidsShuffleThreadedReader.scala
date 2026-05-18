@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025, NVIDIA CORPORATION.
+ * Copyright (c) 2022-2026, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 {"spark": "332cdh"}
 {"spark": "332db"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 {"spark": "340"}
 {"spark": "341"}
@@ -40,12 +41,15 @@
 {"spark": "355"}
 {"spark": "355odp"}
 {"spark": "356"}
+{"spark": "357"}
 {"spark": "400"}
+{"spark": "401"}
+{"spark": "411"}
+{"spark": "411odp"}
 spark-rapids-shim-json-lines ***/
 package org.apache.spark.sql.rapids.shims
 
-import ai.rapids.cudf.{NvtxColor, NvtxRange}
-import com.nvidia.spark.rapids.Arm.withResource
+import com.nvidia.spark.rapids.NvtxRegistry
 
 import org.apache.spark.{MapOutputTracker, SparkEnv, TaskContext}
 import org.apache.spark.serializer.SerializerManager
@@ -79,7 +83,7 @@ class RapidsShuffleThreadedReader[K, C] (
       numReaderThreads = numReaderThreads) {
 
   override protected def getMapSizes: GetMapSizesResult = {
-    withResource(new NvtxRange("getMapSizesByExecId", NvtxColor.CYAN)) { _ =>
+    NvtxRegistry.GET_MAP_SIZES_BY_EXEC_ID {
       if (handle.dependency.isShuffleMergeFinalizedMarked) {
         val res = mapOutputTracker.getPushBasedShuffleMapSizesByExecutorId(
           handle.shuffleId, startMapIndex, endMapIndex, startPartition, endPartition)

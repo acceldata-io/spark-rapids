@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2025, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,13 +30,13 @@
 {"spark": "332cdh"}
 {"spark": "332db"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 spark-rapids-shim-json-lines ***/
 package org.apache.spark.sql.rapids
 
 import scala.collection.mutable.ArrayBuffer
 
-import ai.rapids.cudf.{NvtxColor, NvtxRange}
 import com.nvidia.spark.rapids._
 import com.nvidia.spark.rapids.shuffle.{RapidsShuffleIterator, RapidsShuffleTransport}
 
@@ -77,12 +77,12 @@ class RapidsCachingReader[K, C](
   extends ShuffleReader[K, C] with Logging {
 
   override def read(): Iterator[Product2[K, C]] = {
-    val readRange = new NvtxRange(s"RapidsCachingReader.read", NvtxColor.DARK_GREEN)
+    NvtxRegistry.RAPIDS_CACHING_READER_READ.push()
     try {
       val blocksForRapidsTransport =
           new ArrayBuffer[(BlockManagerId, Seq[(BlockId, Long, Int)])]()
       var cachedBatchIterator: Iterator[ColumnarBatch] = Iterator.empty
-      val blocksByAddressMap: Map[BlockManagerId, Seq[(BlockId, Long, Int)]] = 
+      val blocksByAddressMap: Map[BlockManagerId, Seq[(BlockId, Long, Int)]] =
           blocksByAddress.toMap
       var numCachedBlocks: Int = 0
 
@@ -91,7 +91,7 @@ class RapidsCachingReader[K, C](
 
         logDebug("Trying to read block from manager: " + blockManagerId)
         if (blockManagerId.executorId == localId.executorId) {
-          val readLocalRange = new NvtxRange("Read Local", NvtxColor.GREEN)
+          NvtxRegistry.RAPIDS_CACHING_READER_READ_LOCAL.push()
           try {
             cachedBatchIterator = blockInfos.iterator.flatMap { blockInfo =>
               val blockId = blockInfo._1
@@ -117,7 +117,7 @@ class RapidsCachingReader[K, C](
             // TODO: AB: shuffleBufferHandles.foreach(catalog.updateSpillPriorityForLocalRead)
             metrics.incLocalBlocksFetched(numCachedBlocks)
           } finally {
-            readLocalRange.close()
+            NvtxRegistry.RAPIDS_CACHING_READER_READ_LOCAL.pop()
           }
         } else {
           require(
@@ -155,7 +155,7 @@ class RapidsCachingReader[K, C](
         }
       }
 
-      val itRange = new NvtxRange("Shuffle Iterator prep", NvtxColor.BLUE)
+      NvtxRegistry.RAPIDS_SHUFFLE_ITERATOR_PREP.push()
       try {
         val cachedIt = cachedBatchIterator.map { cb =>
           val cachedBytesRead = GpuColumnVector.getTotalDeviceMemoryUsed(cb)
@@ -182,10 +182,10 @@ class RapidsCachingReader[K, C](
         new InterruptibleIterator[(K, C)](context, completionIter)
 
       } finally {
-        itRange.close()
+        NvtxRegistry.RAPIDS_SHUFFLE_ITERATOR_PREP.pop()
       }
     } finally {
-      readRange.close()
+      NvtxRegistry.RAPIDS_CACHING_READER_READ.pop()
     }
   }
 }

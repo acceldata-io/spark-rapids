@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2025, NVIDIA CORPORATION.
+# Copyright (c) 2020-2026, NVIDIA CORPORATION.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -210,6 +210,12 @@ def is_before_spark_350():
 def is_before_spark_351():
     return spark_version() < "3.5.1"
 
+def is_before_spark_353():
+    return spark_version() < "3.5.3"
+
+def is_spark_350_or_351():
+    return spark_version() >= "3.5.0" and spark_version() <= "3.5.1"
+
 def is_before_spark_400():
     return spark_version() < "4.0.0"
 
@@ -225,17 +231,32 @@ def is_spark_340_or_later():
 def is_spark_341():
     return spark_version() == "3.4.1"
 
+def is_spark_341_or_later():
+    return spark_version() >= "3.4.1"
+
 def is_spark_350_or_later():
     return spark_version() >= "3.5.0"
 
+def is_spark_353_or_later():
+    return spark_version() >= "3.5.3"
+
 def is_spark_351_or_later():
     return spark_version() >= "3.5.1"
+
+def is_spark_356_or_later():
+    return spark_version() >= "3.5.6"
 
 def is_spark_35x():
     return "3.5.0" <= spark_version() < "3.6.0"
 
 def is_spark_400_or_later():
     return spark_version() >= "4.0.0"
+
+def is_spark_401_or_later():
+    return spark_version() >= "4.0.1"
+
+def is_spark_411_or_later():
+    return spark_version() >= "4.1.1"
 
 def is_spark_330():
     return spark_version() == "3.3.0"

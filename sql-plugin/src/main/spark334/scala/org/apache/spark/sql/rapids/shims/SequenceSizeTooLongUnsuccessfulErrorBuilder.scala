@@ -27,6 +27,7 @@
 {"spark": "355"}
 {"spark": "355odp"}
 {"spark": "356"}
+{"spark": "357"}
 spark-rapids-shim-json-lines ***/
 package org.apache.spark.sql.rapids.shims
 

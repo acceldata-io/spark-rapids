@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025, NVIDIA CORPORATION.
+ * Copyright (c) 2022-2026, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 {"spark": "332cdh"}
 {"spark": "332db"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 {"spark": "340"}
 {"spark": "341"}
@@ -40,15 +41,20 @@
 {"spark": "355"}
 {"spark": "355odp"}
 {"spark": "356"}
+{"spark": "357"}
 {"spark": "400"}
+{"spark": "401"}
+{"spark": "411"}
+{"spark": "411odp"}
 spark-rapids-shim-json-lines ***/
 package org.apache.spark.sql.rapids.shims
 
 import java.math.BigInteger
 
-import ai.rapids.cudf.{BinaryOperable, ColumnVector, ColumnView, DType, RoundMode, Scalar}
+import ai.rapids.cudf.{BinaryOperable, ColumnVector, ColumnView, DType, Scalar}
 import com.nvidia.spark.rapids.{BoolUtils, GpuBinaryExpression, GpuColumnVector, GpuScalar}
 import com.nvidia.spark.rapids.Arm.withResource
+import com.nvidia.spark.rapids.jni.{Arithmetic, RoundMode}
 import com.nvidia.spark.rapids.shims.NullIntolerantShim
 
 import org.apache.spark.sql.catalyst.expressions.{Expression, ImplicitCastInputTypes}
@@ -161,7 +167,7 @@ object IntervalUtils {
     // check Inf, -Inf, NaN
     checkDoubleInfNan(doubleCv)
 
-    withResource(doubleCv.round(RoundMode.HALF_UP)) { roundedDouble =>
+    withResource(Arithmetic.round(doubleCv, RoundMode.HALF_UP)) { roundedDouble =>
       // throws exception if the result exceeds int limits
       withResource(roundedDouble.castTo(DType.INT64)) { long =>
         castLongToIntWithOverflowCheck(long)
@@ -193,7 +199,7 @@ object IntervalUtils {
     val MIN_LONG_AS_DOUBLE: Double = -9.223372036854776E18
     val MAX_LONG_AS_DOUBLE_PLUS_ONE: Double = 9.223372036854776E18
 
-    withResource(doubleCv.round(RoundMode.HALF_UP)) { z =>
+    withResource(Arithmetic.round(doubleCv, RoundMode.HALF_UP)) { z =>
       withResource(Scalar.fromDouble(MAX_LONG_AS_DOUBLE_PLUS_ONE)) { max =>
         withResource(z.greaterOrEqualTo(max)) { invalid =>
           if (BoolUtils.isAnyValidTrue(invalid)) {
@@ -324,7 +330,7 @@ object IntervalUtils {
       leftDecimal.div(q, dT)
     }
     withResource(t) { t =>
-      t.round(RoundMode.HALF_UP)
+      Arithmetic.round(t, RoundMode.HALF_UP)
     }
   }
 }
@@ -363,7 +369,7 @@ case class GpuMultiplyYMInterval(
 
   override def doColumnar(numRows: Int, intervalScalar: GpuScalar,
       numScalar: GpuScalar): ColumnVector = {
-    withResource(GpuColumnVector.from(intervalScalar, numRows, interval.dataType)) { expandedLhs =>
+    withResource(GpuColumnVector.from(intervalScalar, numRows)) { expandedLhs =>
       doColumnar(expandedLhs, numScalar)
     }
   }
@@ -437,7 +443,7 @@ case class GpuMultiplyDTInterval(
 
   override def doColumnar(numRows: Int, intervalScalar: GpuScalar,
       numScalar: GpuScalar): ColumnVector = {
-    withResource(GpuColumnVector.from(intervalScalar, numRows, interval.dataType)) { expandedLhs =>
+    withResource(GpuColumnVector.from(intervalScalar, numRows)) { expandedLhs =>
       doColumnar(expandedLhs, numScalar)
     }
   }
@@ -501,7 +507,7 @@ case class GpuDivideYMInterval(
 
   override def doColumnar(numRows: Int, intervalScalar: GpuScalar,
       numScalar: GpuScalar): ColumnVector = {
-    withResource(GpuColumnVector.from(intervalScalar, numRows, interval.dataType)) { expandedLhs =>
+    withResource(GpuColumnVector.from(intervalScalar, numRows)) { expandedLhs =>
       doColumnar(expandedLhs, numScalar)
     }
   }
@@ -583,7 +589,7 @@ case class GpuDivideDTInterval(
 
   override def doColumnar(numRows: Int, intervalScalar: GpuScalar,
       numScalar: GpuScalar): ColumnVector = {
-    withResource(GpuColumnVector.from(intervalScalar, numRows, interval.dataType)) { expandedLhs =>
+    withResource(GpuColumnVector.from(intervalScalar, numRows)) { expandedLhs =>
       doColumnar(expandedLhs, numScalar)
     }
   }

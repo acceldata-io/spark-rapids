@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2026, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,11 @@
 {"spark": "355"}
 {"spark": "355odp"}
 {"spark": "356"}
+{"spark": "357"}
 {"spark": "400"}
+{"spark": "401"}
+{"spark": "411"}
+{"spark": "411odp"}
 spark-rapids-shim-json-lines ***/
 package com.nvidia.spark.rapids.shuffle
 
@@ -40,9 +44,7 @@ import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 import scala.collection
 import scala.collection.mutable
 
-import ai.rapids.cudf.{NvtxColor, NvtxRange}
-import com.nvidia.spark.rapids.{GpuSemaphore, RapidsConf, RapidsShuffleHandle, ShuffleReceivedBufferCatalog}
-import com.nvidia.spark.rapids.Arm.withResource
+import com.nvidia.spark.rapids.{GpuSemaphore, NvtxRegistry, RapidsConf, RapidsShuffleHandle, ShuffleReceivedBufferCatalog}
 import com.nvidia.spark.rapids.ScalableTaskCompletion.onTaskCompletion
 import com.nvidia.spark.rapids.jni.RmmSpark
 
@@ -253,7 +255,7 @@ class RapidsShuffleIterator(
                 false
               } else {
                 batchesInFlight = batchesInFlight - 1
-                withResource(new NvtxRange(s"BATCH RECEIVED", NvtxColor.DARK_GREEN)) { _ =>
+                NvtxRegistry.BATCH_RECEIVED {
                   if (markedAsDone) {
                     throw new IllegalStateException(
                       "This iterator was marked done, but a batched showed up after!!")
@@ -338,7 +340,7 @@ class RapidsShuffleIterator(
   }
 
   override def next(): ColumnarBatch = {
-    val range = new NvtxRange(s"RapidshuffleIterator.next", NvtxColor.RED)
+    NvtxRegistry.RAPIDS_SHUFFLE_ITERATOR_NEXT.push()
 
     // If N tasks downstream are accumulating memory we run the risk OOM
     // On the other hand, if wait here we may not start processing batches that are ready.
@@ -376,15 +378,14 @@ class RapidsShuffleIterator(
 
     result match {
       case Some(BufferReceived(handle)) =>
-        val nvtxRangeAfterGettingBatch = new NvtxRange("RapidsShuffleIterator.gotBatch",
-          NvtxColor.PURPLE)
+        NvtxRegistry.RAPIDS_SHUFFLE_ITERATOR_GOT_BATCH.push()
         try {
           val (cb, memoryUsedBytes) = catalog.getColumnarBatchAndRemove(handle, sparkTypes)
           metricsUpdater.update(blockedTime, 1, memoryUsedBytes, cb.numRows())
           cb
         } finally {
-          nvtxRangeAfterGettingBatch.close()
-          range.close()
+          NvtxRegistry.RAPIDS_SHUFFLE_ITERATOR_GOT_BATCH.pop()
+          NvtxRegistry.RAPIDS_SHUFFLE_ITERATOR_NEXT.pop()
         }
       case Some(
         TransferError(blockManagerId, shuffleBlockBatchId, mapIndex, errorMessage, throwable)) =>

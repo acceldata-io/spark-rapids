@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025, NVIDIA CORPORATION.
+ * Copyright (c) 2022-2026, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
 {"spark": "332"}
 {"spark": "332cdh"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 {"spark": "340"}
 {"spark": "341"}
@@ -41,26 +42,28 @@
 {"spark": "355"}
 {"spark": "355odp"}
 {"spark": "356"}
+{"spark": "357"}
 {"spark": "400"}
+{"spark": "401"}
+{"spark": "411"}
+{"spark": "411odp"}
 spark-rapids-shim-json-lines ***/
 package com.nvidia.spark.rapids.shims
 
-import com.nvidia.spark.rapids.{FoldLocalAggregate, RapidsConf, SparkShims}
+import com.nvidia.spark.rapids.{BucketJoinTwoSidesPrefetch, FoldLocalAggregate, RapidsConf, SparkShims}
 import org.apache.hadoop.fs.FileStatus
 
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.catalyst.plans.physical.BroadcastMode
 import org.apache.spark.sql.execution.SparkPlan
 import org.apache.spark.sql.execution.adaptive.{BroadcastQueryStageExec, ShuffleQueryStageExec}
 import org.apache.spark.sql.execution.datasources.PartitioningAwareFileIndex
 import org.apache.spark.sql.execution.exchange.ReusedExchangeExec
-import org.apache.spark.sql.execution.python.WindowInPandasExec
 
 /**
  * Shim methods that can be compiled with every supported 3.2.0+ except Databricks versions
  */
-trait Spark320PlusNonDBShims extends SparkShims {
+trait Spark320PlusNonDBShims extends SparkShims with WindowInPandasShims {
 
   override final def broadcastModeTransform(mode: BroadcastMode, rows: Array[InternalRow]): Any =
     mode.transform(rows)
@@ -74,7 +77,7 @@ trait Spark320PlusNonDBShims extends SparkShims {
     fileIndex.allFiles()
   }
 
-  def getWindowExpressions(winPy: WindowInPandasExec): Seq[NamedExpression] = winPy.windowExpression
+  // getWindowExpressions is now provided by WindowInPandasShims
 
   /**
    * Case class ShuffleQueryStageExec holds an additional field shuffleOrigin
@@ -93,5 +96,9 @@ trait Spark320PlusNonDBShims extends SparkShims {
     } else {
       plan
     }
+  }
+
+  override def applyPostShimPlanRules(plan: SparkPlan): SparkPlan = {
+    BucketJoinTwoSidesPrefetch(super.applyPostShimPlanRules(plan))
   }
 }

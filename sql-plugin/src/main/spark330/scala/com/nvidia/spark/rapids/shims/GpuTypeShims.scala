@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025, NVIDIA CORPORATION.
+ * Copyright (c) 2022-2026, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@
 {"spark": "332cdh"}
 {"spark": "332db"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 {"spark": "340"}
 {"spark": "341"}
@@ -39,14 +40,18 @@
 {"spark": "355"}
 {"spark": "355odp"}
 {"spark": "356"}
+{"spark": "357"}
 {"spark": "400"}
+{"spark": "401"}
+{"spark": "411"}
+{"spark": "411odp"}
 spark-rapids-shim-json-lines ***/
 package com.nvidia.spark.rapids.shims
 
 import ai.rapids.cudf
 import ai.rapids.cudf.{DType, Scalar}
-import com.nvidia.spark.rapids.{ColumnarCopyHelper, RapidsHostColumnBuilder, TypeSig}
-import com.nvidia.spark.rapids.GpuRowToColumnConverter.{IntConverter, LongConverter, NotNullIntConverter, NotNullLongConverter, TypeConverter}
+import com.nvidia.spark.rapids.{ColumnarCopyHelper, RapidsHostColumnBuilder, TypeConverter, TypeSig}
+import com.nvidia.spark.rapids.GpuRowToColumnConverter.{IntConverter, LongConverter, NotNullIntConverter, NotNullLongConverter}
 
 import org.apache.spark.sql.types.{DataType, DayTimeIntervalType, YearMonthIntervalType}
 import org.apache.spark.sql.vectorized.ColumnVector
@@ -150,7 +155,7 @@ object GpuTypeShims {
       cv: ColumnVector,
       b: RapidsHostColumnBuilder,
       dataType: DataType,
-      rows: Int): Unit = dataType match {
+      rows: Int): Long = dataType match {
     case DayTimeIntervalType(_, _) =>
       ColumnarCopyHelper.longCopy(cv, b, rows)
     case YearMonthIntervalType(_, _) =>

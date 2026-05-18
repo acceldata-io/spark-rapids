@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025, NVIDIA CORPORATION.
+ * Copyright (c) 2019-2026, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,7 @@ import com.nvidia.spark.rapids.RapidsPluginUtils.buildInfoEvent
 import com.nvidia.spark.rapids.ScalableTaskCompletion.onTaskCompletion
 import com.nvidia.spark.rapids.filecache.{FileCache, FileCacheLocalityManager, FileCacheLocalityMsg}
 import com.nvidia.spark.rapids.io.async.TrafficController
-import com.nvidia.spark.rapids.jni.{GpuTimeZoneDB, TaskPriority}
+import com.nvidia.spark.rapids.jni.{GpuTimeZoneDB, RmmSpark, TaskPriority}
 import com.nvidia.spark.rapids.python.PythonWorkerSemaphore
 import org.apache.commons.lang3.exception.ExceptionUtils
 
@@ -137,11 +137,11 @@ object RapidsPluginUtils extends Logging {
     val possibleRapidsJarURLs = classloader.getResources(propName).asScala.toSet.toSeq.filter {
       url => {
         val urlPath = url.toString
-        // Filter out submodule jars, e.g. rapids-4-spark-aggregator_2.12-25.06.0-spark341.jar,
+        // Filter out submodule jars, e.g. rapids-4-spark-aggregator_2.12-26.02.2-spark341.jar,
         // and files stored under subdirs of '!/', e.g.
-        // rapids-4-spark_2.12-25.06.0-cuda11.jar!/spark330/rapids4spark-version-info.properties
+        // rapids-4-spark_2.12-26.02.2-cuda12.jar!/spark330/rapids4spark-version-info.properties
         // We only want to find the main jar, e.g.
-        // rapids-4-spark_2.12-25.06.0-cuda11.jar!/rapids4spark-version-info.properties
+        // rapids-4-spark_2.12-26.02.2-cuda12.jar!/rapids4spark-version-info.properties
         !urlPath.contains("rapids-4-spark-") && urlPath.endsWith("!/" + propName)
       }
     }
@@ -481,12 +481,16 @@ class RapidsDriverPlugin extends DriverPlugin with Logging {
 
     if (GpuShuffleEnv.isRapidsShuffleAvailable(conf)) {
       GpuShuffleEnv.initShuffleManager()
-      if (GpuShuffleEnv.isUCXShuffleAndEarlyStart(conf)) {
-        rapidsShuffleHeartbeatManager =
-          new RapidsShuffleHeartbeatManager(
-            conf.shuffleTransportEarlyStartHeartbeatInterval,
-            conf.shuffleTransportEarlyStartHeartbeatTimeout)
-      }
+    }
+
+    // Enable heartbeats if RAPIDS shuffle is configured for this shim and early start is enabled.
+    // This check doesn't require the shuffle manager to be instantiated yet.
+    if (GpuShuffleEnv.isRapidsShuffleConfigured(sparkConf) &&
+        GpuShuffleEnv.isUCXShuffleAndEarlyStart(conf)) {
+      rapidsShuffleHeartbeatManager =
+        new RapidsShuffleHeartbeatManager(
+          conf.shuffleTransportEarlyStartHeartbeatInterval,
+          conf.shuffleTransportEarlyStartHeartbeatTimeout)
     }
 
     FileCacheLocalityManager.init(sc)
@@ -509,13 +513,42 @@ class RapidsDriverPlugin extends DriverPlugin with Logging {
 }
 
 /**
+ * This class wraps an nvtx range, and a call to `removeTaskMetrics` to ensure
+ * we don't leak metrics for this task.
+ *
+ * We store the object in concurrent map where the key is the executor task thread.
+ * It is `AutoCloseable`, so the caller must close it on task success or failure.
+ */
+case class ActiveTaskMetrics(
+    stageId: Int,
+    taskAttemptId: Long,
+    attemptNumber: Int) extends AutoCloseable {
+  private var nvtx = new NvtxRange(
+    s"Stage $stageId Task $taskAttemptId-$attemptNumber", NvtxColor.DARK_GREEN)
+  private var closed = false
+  override def close(): Unit = {
+    if (!closed) {
+      closed = true
+      RmmSpark.removeTaskMetrics(taskAttemptId)
+      if (nvtx != null) {
+        nvtx.close()
+        nvtx = null
+      }
+    }
+  }
+}
+
+/**
  * The Spark executor plugin provided by the RAPIDS Spark plugin.
  */
 class RapidsExecutorPlugin extends ExecutorPlugin with Logging {
   var rapidsShuffleHeartbeatEndpoint: RapidsShuffleHeartbeatEndpoint = null
   private lazy val extraExecutorPlugins =
     RapidsPluginUtils.extraPlugins.map(_.executorPlugin()).filterNot(_ == null)
-  private val activeTaskNvtx = new ConcurrentHashMap[Thread, NvtxRange]()
+
+  private val activeTaskInfo = new ConcurrentHashMap[Thread, ActiveTaskMetrics]()
+
+  private var isAsyncProfilerEnabled = false
 
   override def init(
       pluginContext: PluginContext,
@@ -527,13 +560,18 @@ class RapidsExecutorPlugin extends ExecutorPlugin with Logging {
       val sparkConf = pluginContext.conf()
       val numCores = RapidsPluginUtils.estimateCoresOnExec(sparkConf)
       val conf = new RapidsConf(extraConf.asScala.toMap)
-      ProfilerOnExecutor.init(pluginContext, conf)
 
-      // Checks if the current GPU architecture is supported by the
-      // spark-rapids-jni and cuDF libraries.
-      // Note: We allow this check to be skipped for off-chance cases.
-      if (!conf.skipGpuArchCheck && conf.isSqlExecuteOnGPU) {
-        RapidsPluginUtils.validateGpuArchitecture()
+      isAsyncProfilerEnabled = conf.asyncProfilerPathPrefix.nonEmpty
+
+      ProfilerOnExecutor.init(pluginContext, conf)
+      if (isAsyncProfilerEnabled) {
+        val schedulerMode = sparkConf.get("spark.scheduler.mode", "FIFO")
+        if (!schedulerMode.equalsIgnoreCase("FIFO")) {
+          logWarning(s"Async profiler is enabled but spark.scheduler.mode is set to " +
+            s"'$schedulerMode'. It's recommended to use FIFO scheduler mode when async " +
+            "profiler is enabled for better profiling accuracy.")
+        }
+        AsyncProfilerOnExecutor.init(pluginContext, conf)
       }
 
       // Fail if there are multiple plugin jars in the classpath.
@@ -575,18 +613,30 @@ class RapidsExecutorPlugin extends ExecutorPlugin with Logging {
           numCores)
         if (GpuShuffleEnv.isRapidsShuffleAvailable(conf)) {
           GpuShuffleEnv.initShuffleManager()
-          if (GpuShuffleEnv.isUCXShuffleAndEarlyStart(conf)) {
-            logInfo("Initializing shuffle manager heartbeats")
-            rapidsShuffleHeartbeatEndpoint = new RapidsShuffleHeartbeatEndpoint(pluginContext, conf)
-            rapidsShuffleHeartbeatEndpoint.registerShuffleHeartbeat()
-          }
         }
+
+        // Enable heartbeats if RAPIDS shuffle is configured for this shim and
+        // early start is enabled.
+        // This check doesn't require the shuffle manager to be instantiated yet.
+        if (GpuShuffleEnv.isRapidsShuffleConfigured(sparkConf) &&
+            GpuShuffleEnv.isUCXShuffleAndEarlyStart(conf)) {
+          logInfo("Initializing shuffle manager heartbeats")
+          rapidsShuffleHeartbeatEndpoint = new RapidsShuffleHeartbeatEndpoint(pluginContext, conf)
+          rapidsShuffleHeartbeatEndpoint.registerShuffleHeartbeat()
+        }
+      }
+
+      // Checks if the current GPU architecture is supported by the
+      // spark-rapids-jni and cuDF libraries.
+      // Note: We allow this check to be skipped for off-chance cases.
+      if (!conf.skipGpuArchCheck && conf.isSqlExecuteOnGPU) {
+        RapidsPluginUtils.validateGpuArchitecture()
       }
 
       logDebug("Loading extra executor plugins: " +
         s"${extraExecutorPlugins.map(_.getClass.getName).mkString(",")}")
       extraExecutorPlugins.foreach(_.init(pluginContext, extraConf))
-      GpuSemaphore.initialize()
+      GpuSemaphore.initialize(conf.maxConcurrentGpuTasks)
       FileCache.init(pluginContext)
       TrafficController.initialize(conf)
     } catch {
@@ -598,7 +648,7 @@ class RapidsExecutorPlugin extends ExecutorPlugin with Logging {
         logGpuDebugInfoAndExit(systemExitCode = 1)
       case e: Throwable =>
         logError("Exception in the executor plugin, shutting down!", e)
-        System.exit(1)
+        RapidsExecutorPlugin.exitWithHaltOnTimeout(1)
     }
   }
 
@@ -678,7 +728,7 @@ class RapidsExecutorPlugin extends ExecutorPlugin with Logging {
       case e: Throwable =>
         logWarning("nvidia-smi process failed", e)
     }
-    System.exit(systemExitCode)
+    RapidsExecutorPlugin.exitWithHaltOnTimeout(systemExitCode)
   }
 
   override def shutdown(): Unit = {
@@ -687,6 +737,9 @@ class RapidsExecutorPlugin extends ExecutorPlugin with Logging {
     PythonWorkerSemaphore.shutdown()
     GpuDeviceManager.shutdown()
     ProfilerOnExecutor.shutdown()
+    if (isAsyncProfilerEnabled) {
+      AsyncProfilerOnExecutor.shutdown()
+    }
     Option(rapidsShuffleHeartbeatEndpoint).foreach(_.close())
     extraExecutorPlugins.foreach(_.shutdown())
     FileCache.shutdown()
@@ -731,10 +784,13 @@ class RapidsExecutorPlugin extends ExecutorPlugin with Logging {
     })
     extraExecutorPlugins.foreach(_.onTaskStart())
     ProfilerOnExecutor.onTaskStart()
+    if (isAsyncProfilerEnabled) {
+      AsyncProfilerOnExecutor.onTaskStart()
+    }
     // Make sure that the thread/task is registered before we try and block
     // For the task main thread, we want to make sure that it's registered in the OOM state
     // machine throughout the task lifecycle.
-    TaskRegistryTracker.registerThreadForRetry()
+    TaskRegistryTracker.registerDedicatedThreadForRetry()
   }
 
   override def onTaskSucceeded(): Unit = {
@@ -746,19 +802,45 @@ class RapidsExecutorPlugin extends ExecutorPlugin with Logging {
     val stageId = taskCtx.stageId()
     val taskAttemptId = taskCtx.taskAttemptId()
     val attemptNumber = taskCtx.attemptNumber()
-    activeTaskNvtx.put(Thread.currentThread(),
-      new NvtxRange(s"Stage $stageId Task $taskAttemptId-$attemptNumber", NvtxColor.DARK_GREEN))
+    activeTaskInfo.put(
+      Thread.currentThread(),
+      ActiveTaskMetrics(stageId, taskAttemptId, attemptNumber))
   }
 
   private def endTaskNvtx(): Unit = {
-    val nvtx = activeTaskNvtx.remove(Thread.currentThread())
-    if (nvtx != null) {
-      nvtx.close()
+    val taskInfo = activeTaskInfo.remove(Thread.currentThread())
+    if (taskInfo != null) {
+      taskInfo.close()
     }
   }
 }
 
-object RapidsExecutorPlugin {
+object RapidsExecutorPlugin extends Logging {
+  /**
+   * Calling System.exit will trigger shutdown hooks to run.
+   * This code is intended to let them run, but then force
+   * kill the process if it takes too long to actually exit.
+   * @param exitCode the exit code to use.
+   */
+  def exitWithHaltOnTimeout(exitCode: Int): Unit = synchronized {
+    val sleepTime = 40
+    val sleepKill = new java.lang.Thread(() => {
+      try {
+        logInfo(s"Halting after $sleepTime seconds")
+        Thread.sleep(sleepTime * 1000)
+        logWarning("Forcing Halt...")
+        Runtime.getRuntime.halt(exitCode)
+      } catch {
+        case _: InterruptedException => //Ignored/expected...
+        case e: Exception =>
+          logWarning("Exception in the ShutDownHook", e)
+      }
+    }, "ShutdownHook-sleepKill-" + sleepTime + "s")
+    sleepKill.setDaemon(true)
+    sleepKill.start()
+    System.exit(exitCode)
+  }
+
   /**
    * Return true if the expected cudf version is satisfied by the actual version found.
    * The version is satisfied if the major and minor versions match exactly. If there is a requested

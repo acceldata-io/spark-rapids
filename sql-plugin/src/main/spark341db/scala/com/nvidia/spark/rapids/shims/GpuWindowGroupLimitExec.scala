@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025, NVIDIA CORPORATION.
+ * Copyright (c) 2024-2026, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,11 @@
 {"spark": "355"}
 {"spark": "355odp"}
 {"spark": "356"}
+{"spark": "357"}
 {"spark": "400"}
+{"spark": "401"}
+{"spark": "411"}
+{"spark": "411odp"}
 spark-rapids-shim-json-lines ***/
 package com.nvidia.spark.rapids.shims
 
@@ -41,6 +45,7 @@ import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, DenseRank, Expression, Rank, RowNumber, SortOrder}
+import org.apache.spark.sql.catalyst.plans.physical.Partitioning
 import org.apache.spark.sql.execution.SparkPlan
 import org.apache.spark.sql.execution.window.{Final, Partial, WindowGroupLimitExec, WindowGroupLimitMode}
 import org.apache.spark.sql.types.DataType
@@ -304,6 +309,10 @@ case class GpuWindowGroupLimitExec(
 
   override def output: Seq[Attribute] = child.output
 
+  override def outputOrdering: Seq[SortOrder] = child.outputOrdering
+
+  override def outputPartitioning: Partitioning = child.outputPartitioning
+
   private def getRankFunctionType(expr: Expression): RankFunctionType = expr match {
     case GpuRank(_) => RankFunction
     case GpuDenseRank(_) => DenseRankFunction
@@ -317,8 +326,9 @@ case class GpuWindowGroupLimitExec(
     val numOutputBatches = gpuLongMetric(GpuMetric.NUM_OUTPUT_BATCHES)
     val numOutputRows = gpuLongMetric(GpuMetric.NUM_OUTPUT_ROWS)
 
-    val boundPartitionSpec = GpuBindReferences.bindGpuReferences(gpuPartitionSpec, child.output)
-    val boundOrderSpec = GpuBindReferences.bindReferences(gpuOrderSpec, child.output)
+    val boundPartitionSpec = GpuBindReferences.bindGpuReferences(gpuPartitionSpec, child.output,
+      allMetrics)
+    val boundOrderSpec = GpuBindReferences.bindReferences(gpuOrderSpec, child.output, allMetrics)
 
     child.executeColumnar().mapPartitions { input =>
       new GpuWindowGroupLimitingIterator(input,

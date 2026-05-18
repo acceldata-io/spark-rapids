@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2026, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,12 +32,17 @@
 {"spark": "355"}
 {"spark": "355odp"}
 {"spark": "356"}
+{"spark": "357"}
 {"spark": "400"}
+{"spark": "401"}
+{"spark": "411"}
+{"spark": "411odp"}
 spark-rapids-shim-json-lines ***/
 package org.apache.spark.sql.rapids.shims
 
 import java.net.URI
 
+import com.nvidia.spark.rapids.AssertUtils.assertInTests
 import com.nvidia.spark.rapids.GpuDataWritingCommand
 import com.nvidia.spark.rapids.shims.SparkShimImpl
 
@@ -57,12 +62,12 @@ case class GpuCreateDataSourceTableAsSelectCommand(
     outputColumnNames: Seq[String],
     origProvider: Class[_])
   extends LeafRunnableCommand {
-  assert(query.resolved)
+  assertInTests(query.resolved)
   override def innerChildren: Seq[LogicalPlan] = query :: Nil
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
-    assert(table.tableType != CatalogTableType.VIEW)
-    assert(table.provider.isDefined)
+    assertInTests(table.tableType != CatalogTableType.VIEW)
+    assertInTests(table.provider.isDefined)
 
     val sessionState = sparkSession.sessionState
     val db = table.identifier.database.getOrElse(sessionState.catalog.getCurrentDatabase)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024, NVIDIA CORPORATION.
+ * Copyright (c) 2023-2025, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@
 {"spark": "332"}
 {"spark": "332cdh"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 spark-rapids-shim-json-lines ***/
 package org.apache.spark.sql.rapids.execution
@@ -61,7 +62,7 @@ class GpuBroadcastNestedLoopJoinMeta(
     if (isAstCondition) {
       // Try to extract non-ast-able conditions from join conditions
       val (remains, leftExpr, rightExpr) = AstUtil.extractNonAstFromJoinCond(
-        conditionMeta, left.output, right.output, true)
+        conditionMeta, left.output, right.output)
 
       // Reconstruct the childern with wrapped project node if needed.
       val leftChild =

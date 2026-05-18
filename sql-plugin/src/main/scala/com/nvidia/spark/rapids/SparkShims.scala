@@ -196,4 +196,17 @@ trait SparkShims {
    * Handle regexp_replace inconsistency from https://issues.apache.org/jira/browse/SPARK-39107
    */
   def reproduceEmptyStringBug: Boolean
+
+
+  /**
+   * Handle TableCacheQueryStageExec for getNonQueryStagePlan.
+   * Returns None for versions where TableCacheQueryStageExec doesn't exist.
+   */
+  def getTableCacheNonQueryStagePlan(plan: SparkPlan): Option[SparkPlan] = None
+
+  /**
+   * Return true if this shim registers GPU replacements for `WriteFilesExec`.
+   * Used to keep higher-level feature gating (e.g. LORE) aligned with shim coverage.
+   */
+  def hasGpuWriteFiles: Boolean = false
 }

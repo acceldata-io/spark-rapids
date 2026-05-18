@@ -50,11 +50,11 @@ mvn verify
 
 After a successful build, the RAPIDS Accelerator jar will be in the `dist/target/` directory.
 This will build the plugin for a single version of Spark.  By default, this is Apache Spark
-3.2.0. To build against other versions of Spark you use the `-Dbuildver=XXX` command line option
-to Maven. For instance to build Spark 3.2.0 you would use:
+3.3.0. To build against other versions of Spark you use the `-Dbuildver=XXX` command line option
+to Maven. For instance to build Spark 3.3.0 you would use:
 
 ```shell script
-mvn -Dbuildver=320 verify
+mvn -Dbuildver=330 verify
 ```
 You can find all available build versions in the top level pom.xml file. If you are building
 for Databricks then you should use the `jenkins/databricks/build.sh` script and modify it for
@@ -110,7 +110,7 @@ If you want to create a jar with multiple versions we have the following options
 3. Build for all Apache Spark versions, CDH and Databricks with no SNAPSHOT versions of Spark, only released. Use `-PnoSnaphsotsWithDatabricks`.
 4. Build for all Apache Spark versions, CDH and Databricks including SNAPSHOT versions of Spark we have supported for. Use `-PsnapshotsWithDatabricks`
 5. Build for an arbitrary combination of comma-separated build versions using `-Dincluded_buildvers=<CSV list of build versions>`.
-   E.g., `-Dincluded_buildvers=320,330`
+   E.g., `-Dincluded_buildvers=330,331`
 
 You must first build each of the versions of Spark and then build one final time using the profile for the option you want.
 
@@ -127,15 +127,15 @@ mvn -pl dist -PnoSnapshots package -DskipTests
 Verify that shim-specific classes are hidden from a conventional classloader.
 
 ```bash
-$ javap -cp dist/target/rapids-4-spark_2.12-25.06.0-cuda11.jar com.nvidia.spark.rapids.shims.SparkShimImpl
+$ javap -cp dist/target/rapids-4-spark_2.12-26.02.2-cuda12.jar com.nvidia.spark.rapids.shims.SparkShimImpl
 Error: class not found: com.nvidia.spark.rapids.shims.SparkShimImpl
 ```
 
 However, its bytecode can be loaded if prefixed with `spark3XY` not contained in the package name
 
 ```bash
-$ javap -cp dist/target/rapids-4-spark_2.12-25.06.0-cuda11.jar spark320.com.nvidia.spark.rapids.shims.SparkShimImpl | head -2
-Warning: File dist/target/rapids-4-spark_2.12-25.06.0-cuda11.jar(/spark320/com/nvidia/spark/rapids/shims/SparkShimImpl.class) does not contain class spark320.com.nvidia.spark.rapids.shims.SparkShimImpl
+$ javap -cp dist/target/rapids-4-spark_2.12-26.02.2-cuda12.jar spark330.com.nvidia.spark.rapids.shims.SparkShimImpl | head -2
+Warning: File dist/target/rapids-4-spark_2.12-26.02.2-cuda12.jar(/spark330/com/nvidia/spark/rapids/shims/SparkShimImpl.class) does not contain class spark330.com.nvidia.spark.rapids.shims.SparkShimImpl
 Compiled from "SparkShims.scala"
 public final class com.nvidia.spark.rapids.shims.SparkShimImpl {
 ```
@@ -147,9 +147,9 @@ There is a build script `build/buildall` that automates the local build process.
 
 By default, it builds everything that is needed to create a distribution jar for all released (noSnapshots) Spark versions except for Databricks. Other profiles that you can pass using `--profile=<distribution profile>` include
 - `snapshots` that includes all released (noSnapshots) and snapshots Spark versions except for Databricks
-- `minimumFeatureVersionMix` that currently includes 321cdh, 320, 330 is recommended for catching incompatibilities already in the local development cycle
+- `minimumFeatureVersionMix` that currently includes 330 is recommended for catching incompatibilities already in the local development cycle
 
-For initial quick iterations we can use `--profile=<buildver>` to build a single-shim version. e.g., `--profile=320` for Spark 3.2.0.
+For initial quick iterations we can use `--profile=<buildver>` to build a single-shim version. e.g., `--profile=330` for Spark 3.3.0.
 
 The option `--module=<module>` allows to limit the number of build steps. When iterating, we often don't have the need for the entire build. We may be interested in building everything necessary just to run integration tests (`--module=integration_tests`), or we may want to just rebuild the distribution jar (`--module=dist`)
 
@@ -159,8 +159,7 @@ specifying the environment variable `BUILD_PARALLEL=<n>`.
 ### Building against different CUDA Toolkit versions
 
 You can build against different versions of the CUDA Toolkit by modifying the variable `cuda.version`:
-* `-Dcuda.version=cuda11` (CUDA 11.x, default)
-* `-Dcuda.version=cuda12` (CUDA 12.x)
+* `-Dcuda.version=cuda12` (CUDA 12.x, default)
 
 ### Building a Distribution for a Single Spark Release
 
@@ -178,7 +177,7 @@ mvn package -pl dist -am -Dbuildver=340 -DallowConventionalDistJar=true
 Verify `com.nvidia.spark.rapids.shims.SparkShimImpl` is conventionally loadable:
 
 ```bash
-$ javap -cp dist/target/rapids-4-spark_2.12-25.06.0-cuda11.jar com.nvidia.spark.rapids.shims.SparkShimImpl | head -2
+$ javap -cp dist/target/rapids-4-spark_2.12-26.02.2-cuda12.jar com.nvidia.spark.rapids.shims.SparkShimImpl | head -2
 Compiled from "SparkShims.scala"
 public final class com.nvidia.spark.rapids.shims.SparkShimImpl {
 ```
@@ -307,7 +306,7 @@ In order to make sure that IDEA handles profile-specific source code roots withi
 
 If you develop a feature that has to interact with the Shim layer or simply need to test the Plugin with a different
 Spark version, open [Maven tool window](https://www.jetbrains.com/help/idea/2022.3/maven-projects-tool-window.html) and
-select one of the `release3xx` profiles (e.g, `release320`) for Apache Spark 3.2.0.
+select one of the `release3xx` profiles (e.g, `release330`) for Apache Spark 3.3.0.
 Make sure [Manual Maven Install](#manual-maven-install-for-a-target-spark-build) for that profile
 has been executed.
 
@@ -352,14 +351,14 @@ If you see Scala symbols unresolved (highlighted red) in IDEA please try the fol
 [Bloop](https://scalacenter.github.io/bloop/) is a build server and a set of tools around Build
 Server Protocol (BSP) for Scala providing an integration path with IDEs that support it. In fact,
 you can generate a Bloop project from Maven just for the Maven modules and profiles you are
-interested in. For example, to generate the Bloop projects for the Spark 3.2.0 dependency
+interested in. For example, to generate the Bloop projects for the Spark 3.3.0 dependency
 just for the production code run:
 
 ```shell script
 mvn -B clean install \
     -DbloopInstall \
     -DdownloadSources=true \
-    -Dbuildver=320
+    -Dbuildver=330
 ```
 
 With `--generate-bloop` we integrated Bloop project generation into `buildall`. It makes it easier
@@ -374,7 +373,7 @@ the symlink `.bloop` to point to the corresponding directory `.bloop-spark3XY`
 
 Example usage:
 ```Bash
-./build/buildall --generate-bloop --profile=320,330
+./build/buildall --generate-bloop --profile=330
 rm -vf .bloop
 ln -s .bloop-spark330 .bloop
 ```
@@ -404,7 +403,7 @@ Here we document the integration with VS code. It makes development on a remote 
 as easy as local development, which comes very handy when working in Cloud environments.
 
 Run `./build/buildall --generate-bloop --profile=<profile>` to generate Bloop projects
-for required Spark dependencies, e.g. `--profile=320` for Spark 3.2.0. When developing
+for required Spark dependencies, e.g. `--profile=330` for Spark 3.3.0. When developing
 remotely this is done on the remote node.
 
 Install [Scala Metals extension](https://scalameta.org/metals/docs/editors/vscode) in VS Code,
@@ -599,6 +598,27 @@ brew install gnu-sed
 # and add to PATH to make it as default sed for your shell
 export PATH="/usr/local/opt/gnu-sed/libexec/gnubin:$PATH"
 ```
+
+### Creating a Pull Request
+
+Here are some guidelines to follow when creating a pull request:
+
+1. If your pull request is not ready for review but you want to make use of the
+   continuous integration testing facilities, please make it as a draft and label it with `[WIP]`.
+
+2. If your pull request is ready to be reviewed without requiring additional
+   work on top of it, then convert it to a regular pull request and remove the `[WIP]` label
+   (if applicable).
+
+3. Once the review has taken place, please do not add features or make changes
+   out of the scope of those even if the reviewer requests them. Instead, please
+   consider filing new issues for those changes.
+
+4. Please avoid rebasing your branch during the review process, as this causes the context
+   of any comments made by reviewers to be lost. If conflicts occur during
+   review, then they should be resolved by merging into the branch used for
+   making the pull request.
+
 
 ### Pull request status checks
 A pull request should pass all status checks before being merged.

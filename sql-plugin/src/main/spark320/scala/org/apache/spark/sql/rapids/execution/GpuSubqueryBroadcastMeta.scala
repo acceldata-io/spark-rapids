@@ -26,6 +26,7 @@
 {"spark": "332"}
 {"spark": "332cdh"}
 {"spark": "333"}
+{"spark": "333odp"}
 {"spark": "334"}
 {"spark": "340"}
 {"spark": "341"}
@@ -41,6 +42,7 @@
 {"spark": "355"}
 {"spark": "355odp"}
 {"spark": "356"}
+{"spark": "357"}
 spark-rapids-shim-json-lines ***/
 package org.apache.spark.sql.rapids.execution
 

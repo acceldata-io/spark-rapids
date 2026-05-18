@@ -263,7 +263,7 @@ individually, so you don't risk running unit tests along with the integration te
 http://www.scalatest.org/user_guide/using_the_scalatest_shell
 
 ```shell
-spark-shell --jars rapids-4-spark-tests_2.12-25.06.0-tests.jar,rapids-4-spark-integration-tests_2.12-25.06.0-tests.jar,scalatest_2.12-3.0.5.jar,scalactic_2.12-3.0.5.jar
+spark-shell --jars rapids-4-spark-tests_2.12-26.02.2-tests.jar,rapids-4-spark-integration-tests_2.12-26.02.2-tests.jar,scalatest_2.12-3.0.5.jar,scalactic_2.12-3.0.5.jar
 ```
 
 First you import the `scalatest_shell` and tell the tests where they can find the test files you
@@ -283,10 +283,10 @@ durations.run(new com.nvidia.spark.rapids.JoinsSuite)
 Most clusters probably will not have the RAPIDS plugin installed in the cluster yet.
 If you just want to verify the SQL replacement is working you will need to add the
 `rapids-4-spark` jar to your `spark-submit` command. Note the following example
-assumes CUDA 11.0 is being used and the Spark distribution is built with Scala 2.12.
+assumes CUDA 12 is being used and the Spark distribution is built with Scala 2.12.
 
 ```
-$SPARK_HOME/bin/spark-submit --jars "rapids-4-spark_2.12-25.06.0-cuda11.jar" ./runtests.py
+$SPARK_HOME/bin/spark-submit --jars "rapids-4-spark_2.12-26.02.2-cuda12.jar" ./runtests.py
 ```
 
 You don't have to enable the plugin for this to work, the test framework will do that for you.
@@ -364,6 +364,56 @@ This marker has the following arguments:
 - `condition`: is used to gate when the override is appropriate, usually used to say that specific shims
                need the special override.
 - `permanent`: forces a test to ignore `DATAGEN_SEED` if True. If False, or if absent, the `DATAGEN_SEED` value always wins.
+
+### Randomly selecting tests
+
+To shorten feedback cycles, you can ask the harness to execute only a random subset of the collected
+tests by setting the `RANDOM_SELECT` environment variable before invoking
+`run_pyspark_from_build.sh`. Values greater than or equal to `1` are treated as an absolute number of
+tests to run, values between `0` and `1` are interpreted as a fraction of the collected test set, and
+`0` skips all tests. Leave the variable unset to execute the full suite. You can combine `RANDOM_SELECT`
+with `TESTS`, `-k`, or `-m` filters to limit the pool of tests that the random selection operates on.
+
+Set `RANDOM_SELECT_SEED` to make the selection deterministic when reproducing runs. If omitted, the
+seed defaults to `0`.
+
+Examples:
+
+```shell
+# Run 100 random tests out of the collected set
+RANDOM_SELECT=100 ./integration_tests/run_pyspark_from_build.sh
+
+# Run roughly 10% of the collected tests
+RANDOM_SELECT=0.1 ./integration_tests/run_pyspark_from_build.sh
+
+# Run 100 random tests with a fixed seed for reproducibility
+RANDOM_SELECT=100 RANDOM_SELECT_SEED=42 ./integration_tests/run_pyspark_from_build.sh
+
+# Run 100 random tests chosen from cases matching the keyword "aggregate"
+RANDOM_SELECT=100 ./integration_tests/run_pyspark_from_build.sh -k 'aggregate'
+```
+
+If the requested count or fraction is greater than or equal to the number of collected tests, the full
+set is executed and a message is printed indicating that no reduction was applied.
+
+### Controlling OOM injection
+
+Synthetic GPU out-of-memory (OOM) injection helps exercise recovery paths in the plugin. Use the pytest
+option `--test_oom_injection_mode` to choose how the harness injects OOMs:
+
+- `random` (default): randomly inject OOMs into a subset of tests.
+- `always`: inject OOMs into every eligible test.
+- `never`: disable OOM injection.
+
+Pass the option through the wrapper script by appending it after `--`, for example:
+
+```shell
+./integration_tests/run_pyspark_from_build.sh -- --test_oom_injection_mode=never
+```
+
+The randomness used when the mode is `random` is controlled by the `SPARK_RAPIDS_TEST_INJECT_OOM_SEED`
+environment variable. If unset, the launcher script assigns the current timestamp and prints the seed at
+startup so that the run can be reproduced.
 
 ### Running with non-UTC time zone
 For the new added cases, we should check non-UTC time zone is working, or the non-UTC nightly CIs will fail.
@@ -454,10 +504,10 @@ To run cudf_udf tests, need following configuration changes:
    * Decrease `spark.rapids.memory.gpu.allocFraction` to reserve enough GPU memory for Python processes in case of out-of-memory.
    * Add `spark.rapids.python.concurrentPythonWorkers` and `spark.rapids.python.memory.gpu.allocFraction` to reserve enough GPU memory for Python processes in case of out-of-memory.
 
-As an example, here is the `spark-submit` command with the cudf_udf parameter on CUDA 11.0:
+As an example, here is the `spark-submit` command with the cudf_udf parameter on CUDA 12:
 
 ```
-$SPARK_HOME/bin/spark-submit --jars "rapids-4-spark_2.12-25.06.0-cuda11.jar,rapids-4-spark-tests_2.12-25.06.0.jar" --conf spark.rapids.memory.gpu.allocFraction=0.3 --conf spark.rapids.python.memory.gpu.allocFraction=0.3 --conf spark.rapids.python.concurrentPythonWorkers=2 --py-files "rapids-4-spark_2.12-25.06.0-cuda11.jar" --conf spark.executorEnv.PYTHONPATH="rapids-4-spark_2.12-25.06.0-cuda11.jar" ./runtests.py --cudf_udf
+$SPARK_HOME/bin/spark-submit --jars "rapids-4-spark_2.12-26.02.2-cuda12.jar,rapids-4-spark-tests_2.12-26.02.2.jar" --conf spark.rapids.memory.gpu.allocFraction=0.3 --conf spark.rapids.python.memory.gpu.allocFraction=0.3 --conf spark.rapids.python.concurrentPythonWorkers=2 --py-files "rapids-4-spark_2.12-26.02.2-cuda12.jar" --conf spark.executorEnv.PYTHONPATH="rapids-4-spark_2.12-26.02.2-cuda12.jar" ./runtests.py --cudf_udf
 ```
 
 ### Enabling fuzz tests
@@ -475,6 +525,17 @@ Some tests require that Apache Iceberg has been configured in the Spark environm
 properly without it. These tests assume Iceberg is not configured and are disabled by default.
 If Spark has been configured to support Iceberg then these tests can be enabled by adding the
 `--iceberg` option to the command.
+
+### Run Apache iceberg s3tables tests
+
+To run iceberg tests against aws s3tables catalog, we need to setup several things:
+1. Run `aws configure` to setup aws credentials and region.
+2. Create a s3tables [table bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-tables-buckets-create.html), and fetch its arn
+3. Create a namespace with name `default` under the table bucket created in step 2.
+4. Add environment `ICEBERG_TEST_REMOTE_CATALOG=1`
+5. Set spark catalog implementation s3 tables: 
+   `--conf spark.sql.catalog.spark_catalog.catalog-impl="software.amazon.s3tables.iceberg.S3TablesCatalog"`
+6. Set spark warehouse to table bucket arn in step 2: `--conf spark.sql.catalog.spark_catalog.warehouse=<table bucket arn>`
 
 ### Enabling Delta Lake tests
 
