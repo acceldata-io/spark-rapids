@@ -2185,11 +2185,11 @@ This will force full Scala code rebuild in downstream modules.
         </repository>
         <repository>
             <id>acceldata-repo</id>
-            <url>https://repo1.acceldata.dev/repository/odp-central/</url>
+            <url>https://repo1.acceldata.dev/repository/odp-staging-central/</url>
         </repository>
         <repository>
             <id>acceldata-staging-repo</id>
-            <url>https://repo1.acceldata.dev/repository/odp-central/</url>
+            <url>https://repo1.acceldata.dev/repository/odp-staging-central/</url>
         </repository>
     </repositories>
     <pluginRepositories>
@@ -2222,11 +2222,11 @@ This will force full Scala code rebuild in downstream modules.
         </pluginRepository>
         <pluginRepository>
             <id>acceldata-repo</id>
-            <url>https://repo1.acceldata.dev/repository/odp-central/</url>
+            <url>https://repo1.acceldata.dev/repository/odp-staging-central/</url>
         </pluginRepository>
         <pluginRepository>
             <id>acceldata-staging-repo</id>
-            <url>https://repo1.acceldata.dev/repository/odp-central/</url>
+            <url>https://repo1.acceldata.dev/repository/odp-staging-central/</url>
         </pluginRepository>
     </pluginRepositories>
 </project>
