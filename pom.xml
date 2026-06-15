@@ -75,6 +75,18 @@
 
         <module>shim-deps</module>
     </modules>
+    <distributionManagement>
+        <repository>
+            <id>nexus-releases</id>
+            <name>Releases</name>
+            <url>https://repo1.acceldata.dev/repository/odp-release/</url>
+        </repository>
+        <snapshotRepository>
+            <id>nexus-snapshots</id>
+            <name>Snapshot</name>
+            <url>https://repo1.acceldata.dev/repository/odp-snapshot/</url>
+        </snapshotRepository>
+    </distributionManagement>
     <profiles>
         <!-- #if scala-2.12 -->
         <profile>
@@ -165,6 +177,30 @@
                 <buildver>333</buildver>
                 <spark.version>${spark333.version}</spark.version>
                 <spark.test.version>${spark333.version}</spark.test.version>
+                <parquet.hadoop.version>1.12.2</parquet.hadoop.version>
+                <rapids.delta.artifactId1>rapids-4-spark-delta-21x</rapids.delta.artifactId1>
+                <rapids.delta.artifactId2>rapids-4-spark-delta-22x</rapids.delta.artifactId2>
+                <rapids.delta.artifactId3>rapids-4-spark-delta-23x</rapids.delta.artifactId3>
+            </properties>
+            <modules>
+                <module>delta-lake/delta-21x</module>
+                <module>delta-lake/delta-22x</module>
+                <module>delta-lake/delta-23x</module>
+                <module>iceberg/iceberg-stub</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>release333odp</id>
+            <activation>
+                <property>
+                    <name>buildver</name>
+                    <value>333odp</value>
+                </property>
+            </activation>
+            <properties>
+                <buildver>333odp</buildver>
+                <spark.version>${spark333odp.version}</spark.version>
+                <spark.test.version>${spark333odp.version}</spark.test.version>
                 <parquet.hadoop.version>1.12.2</parquet.hadoop.version>
                 <rapids.delta.artifactId1>rapids-4-spark-delta-21x</rapids.delta.artifactId1>
                 <rapids.delta.artifactId2>rapids-4-spark-delta-22x</rapids.delta.artifactId2>
@@ -410,6 +446,29 @@
             </modules>
         </profile>
         <profile>
+            <id>release351odp</id>
+            <activation>
+                <property>
+                    <name>buildver</name>
+                    <value>351odp</value>
+                </property>
+            </activation>
+            <properties>
+                <buildver>351odp</buildver>
+                <spark.version>${spark351odp.version}</spark.version>
+                <spark.test.version>${spark351odp.version}</spark.test.version>
+                <parquet.hadoop.version>1.15.2</parquet.hadoop.version>
+                <rapids.delta.artifactId1>rapids-4-spark-delta-stub</rapids.delta.artifactId1>
+                <iceberg.artifact.suffix>${spark35x.iceberg.artifact.suffix}</iceberg.artifact.suffix>
+                <rapids.iceberg.artifactId>rapids-4-spark-iceberg-1-6-x</rapids.iceberg.artifactId>
+                <slf4j.version>2.0.7</slf4j.version>
+            </properties>
+            <modules>
+                <module>delta-lake/delta-stub</module>
+                <module>iceberg/iceberg-1-6-x</module>
+            </modules>
+        </profile>
+        <profile>
             <id>release352</id>
             <activation>
                 <property>
@@ -508,6 +567,42 @@
             </modules>
         </profile>
         <profile>
+            <id>release355odp</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>buildver</name>
+                    <value>355odp</value>
+                </property>
+            </activation>
+            <properties>
+                <buildver>355odp</buildver>
+                <spark.version>${spark355odp.version}</spark.version>
+                <spark.test.version>${spark355odp.version}</spark.test.version>
+                <parquet.hadoop.version>1.15.2</parquet.hadoop.version>
+                <rapids.delta.artifactId1>rapids-4-spark-delta-33x</rapids.delta.artifactId1>
+                <iceberg.artifact.suffix>${spark35x.iceberg.artifact.suffix}</iceberg.artifact.suffix>
+                <!-- #if scala-2.12 -->
+                <iceberg.version>${iceberg.19x.version}</iceberg.version>
+                <rapids.iceberg.artifactId>rapids-4-spark-iceberg-1-6-x</rapids.iceberg.artifactId>
+                <!-- #endif scala-2.12 -->
+                <!-- #if scala-2.13 --><!--
+                <iceberg.version>1.9.2</iceberg.version>
+                <rapids.iceberg.artifactId>rapids-4-spark-iceberg-1-9-x</rapids.iceberg.artifactId>
+                --><!-- #endif scala-2.13 -->
+                <slf4j.version>2.0.7</slf4j.version>
+            </properties>
+            <modules>
+                <module>delta-lake/delta-33x</module>
+                <!-- #if scala-2.12 -->
+                <module>iceberg/iceberg-1-6-x</module>
+                <!-- #endif scala-2.12 -->
+                <!-- #if scala-2.13 --><!--
+                <module>iceberg/iceberg-1-9-x</module>
+                --><!-- #endif scala-2.13 -->
+            </modules>
+        </profile>
+        <profile>
             <id>release356</id>
             <activation>
                 <property>
@@ -585,7 +680,43 @@
                 <module>iceberg/iceberg-1-10-x</module>
             </modules>
         </profile>
-	<!-- #if scala-2.13 --><!--
+        <profile>
+            <id>release358odp</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>buildver</name>
+                    <value>358odp</value>
+                </property>
+            </activation>
+            <properties>
+                <buildver>358odp</buildver>
+                <spark.version>${spark358odp.version}</spark.version>
+                <spark.test.version>${spark358odp.version}</spark.test.version>
+                <parquet.hadoop.version>1.15.2</parquet.hadoop.version>
+                <rapids.delta.artifactId1>rapids-4-spark-delta-33x</rapids.delta.artifactId1>
+                <iceberg.artifact.suffix>${spark35x.iceberg.artifact.suffix}</iceberg.artifact.suffix>
+                <!-- #if scala-2.12 -->
+                <iceberg.version>${iceberg.19x.version}</iceberg.version>
+                <rapids.iceberg.artifactId>rapids-4-spark-iceberg-1-6-x</rapids.iceberg.artifactId>
+                <!-- #endif scala-2.12 -->
+                <!-- #if scala-2.13 --><!--
+                <iceberg.version>1.9.2</iceberg.version>
+                <rapids.iceberg.artifactId>rapids-4-spark-iceberg-1-9-x</rapids.iceberg.artifactId>
+                --><!-- #endif scala-2.13 -->
+                <slf4j.version>2.0.7</slf4j.version>
+            </properties>
+            <modules>
+                <module>delta-lake/delta-33x</module>
+                <!-- #if scala-2.12 -->
+                <module>iceberg/iceberg-1-6-x</module>
+                <!-- #endif scala-2.12 -->
+                <!-- #if scala-2.13 --><!--
+                <module>iceberg/iceberg-1-9-x</module>
+                --><!-- #endif scala-2.13 -->
+            </modules>
+        </profile>
+	<!-- #if scala-2.13 -->
         <profile>
             <id>release400</id>
             <activation>
@@ -786,7 +917,45 @@
                 </pluginManagement>
             </build>
         </profile>
-        --><!-- #endif scala-2.13 -->
+        <profile>
+            <id>release412odp</id>
+            <activation>
+                <property>
+                    <name>buildver</name>
+                    <value>412odp</value>
+                </property>
+            </activation>
+            <properties>
+                <buildver>412odp</buildver>
+                <spark.version>${spark412odp.version}</spark.version>
+                <spark.test.version>${spark412odp.version}</spark.test.version>
+                <parquet.hadoop.version>1.13.1</parquet.hadoop.version>
+                <rapids.delta.artifactId1>rapids-4-spark-delta-41x</rapids.delta.artifactId1>
+                <iceberg.artifact.suffix>${spark40x.iceberg.artifact.suffix}</iceberg.artifact.suffix>
+                <iceberg.runtime.version>${iceberg.110x.version}</iceberg.runtime.version>
+                <slf4j.version>2.0.7</slf4j.version>
+                <scala.javac.args>-Xlint:all,-serial,-path,-try,-processing,-options|-Werror</scala.javac.args>
+            </properties>
+            <modules>
+                <module>delta-lake/delta-41x</module>
+                <module>iceberg/iceberg-stub</module>
+            </modules>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>net.alchim31.maven</groupId>
+                            <artifactId>scala-maven-plugin</artifactId>
+                            <configuration>
+                                <release combine.self="override"/>
+                                <target>${java.major.version}</target>
+                            </configuration>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+            </build>
+        </profile>
+        <!-- #endif scala-2.13 -->
         <profile>
             <id>source-javadoc</id>
             <build>
@@ -940,10 +1109,12 @@
         <!--
          If you update a dependency version so it is no longer a SNAPSHOT
          please update the snapshot-shims profile as well so it is accurate -->
+        <spark321.version>3.2.1</spark321.version>
         <spark330.version>3.3.0</spark330.version>
         <spark331.version>3.3.1</spark331.version>
         <spark332.version>3.3.2</spark332.version>
         <spark333.version>3.3.3</spark333.version>
+        <spark333odp.version>3.3.3.3.4.3.0-1</spark333odp.version>
         <spark334.version>3.3.4</spark334.version>
         <spark340.version>3.4.0</spark340.version>
         <spark341.version>3.4.1</spark341.version>
@@ -954,13 +1125,16 @@
         <spark350db143.version>3.5.0-databricks-143</spark350db143.version>
         <spark350.version>3.5.0</spark350.version>
         <spark351.version>3.5.1</spark351.version>
+        <spark351odp.version>3.5.1.3.4.3.0-1</spark351odp.version>
         <spark352.version>3.5.2</spark352.version>
         <spark353.version>3.5.3</spark353.version>
         <spark354.version>3.5.4</spark354.version>
         <spark355.version>3.5.5</spark355.version>
+        <spark355odp.version>3.5.5.3.4.3.0-1</spark355odp.version>
         <spark356.version>3.5.6</spark356.version>
         <spark357.version>3.5.7</spark357.version>
         <spark358.version>3.5.8</spark358.version>
+        <spark358odp.version>3.5.8.3.4.3.0-1</spark358odp.version>
         <spark400.version>4.0.0</spark400.version>
         <spark400db173.version>4.0.0-databricks-173</spark400db173.version>
         <spark401.version>4.0.1</spark401.version>
@@ -968,6 +1142,7 @@
         <spark403.version>4.0.3</spark403.version>
         <spark411.version>4.1.1</spark411.version>
         <spark412.version>4.1.2</spark412.version>
+        <spark412odp.version>4.1.2.3.4.3.0-1</spark412odp.version>
         <mockito.version>3.12.4</mockito.version>
         <!-- 4.7.1 required: later versions auto-derive -release from -target,
              preventing JDK 17 boot classpath access with JDK 8 classfile output -->
@@ -2062,6 +2237,14 @@ This will force full Scala code rebuild in downstream modules.
                 <enabled>${cloudera.repo.enabled}</enabled>
             </snapshots>
         </repository>
+        <repository>
+            <id>acceldata-repo</id>
+            <url>https://repo1.acceldata.dev/repository/odp-central/</url>
+        </repository>
+        <repository>
+            <id>acceldata-staging-repo</id>
+            <url>https://repo1.acceldata.dev/repository/odp-central/</url>
+        </repository>
     </repositories>
     <pluginRepositories>
         <pluginRepository>
@@ -2090,6 +2273,14 @@ This will force full Scala code rebuild in downstream modules.
             <snapshots>
                 <enabled>${cloudera.repo.enabled}</enabled>
             </snapshots>
+        </pluginRepository>
+        <pluginRepository>
+            <id>acceldata-repo</id>
+            <url>https://repo1.acceldata.dev/repository/odp-central/</url>
+        </pluginRepository>
+        <pluginRepository>
+            <id>acceldata-staging-repo</id>
+            <url>https://repo1.acceldata.dev/repository/odp-central/</url>
         </pluginRepository>
     </pluginRepositories>
 </project>
