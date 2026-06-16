@@ -20,6 +20,7 @@
 {"spark": "401"}
 {"spark": "402"}
 {"spark": "411"}
+{"spark": "411odp"}
 spark-rapids-shim-json-lines ***/
 package org.apache.spark.sql.nvidia
 
