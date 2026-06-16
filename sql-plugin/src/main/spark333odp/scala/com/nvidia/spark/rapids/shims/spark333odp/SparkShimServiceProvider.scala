@@ -19,18 +19,18 @@
 spark-rapids-shim-json-lines ***/
 package com.nvidia.spark.rapids.shims.spark333odp
 
-import com.nvidia.spark.rapids.SparkShimVersion
+import com.nvidia.spark.rapids.{AcceldataShimVersion, ShimVersion}
 
 object SparkShimServiceProvider {
-  val VERSION = SparkShimVersion(3, 3, 3)
-  val VERSIONNAMES = Seq(s"$VERSION")
+  val VERSION = AcceldataShimVersion(3, 3, 3, "3.4.3.0-1")
+  val ODP_BASE_VERSION = "3.3.3.3.4.3.0-1"
 }
 
 class SparkShimServiceProvider extends com.nvidia.spark.rapids.SparkShimServiceProvider {
 
-  override def getShimVersion: SparkShimVersion = SparkShimServiceProvider.VERSION
+  override def getShimVersion: ShimVersion = SparkShimServiceProvider.VERSION
 
-  def matchesVersion(version: String): Boolean = {
-    SparkShimServiceProvider.VERSIONNAMES.contains(version)
+  override def matchesVersion(version: String): Boolean = {
+    version.contains(SparkShimServiceProvider.ODP_BASE_VERSION)
   }
 }
