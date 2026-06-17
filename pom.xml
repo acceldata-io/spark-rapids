@@ -967,7 +967,7 @@
         <rapids.secondaryCacheDir>${spark.rapids.project.basedir}/target/${spark.version.classifier}/.sbt/1.0/zinc/org.scala-sbt</rapids.secondaryCacheDir>
         <allowConventionalDistJar>false</allowConventionalDistJar>
         <buildver>330</buildver>
-        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.source>17</maven.compiler.source>
         <java.major.version>8</java.major.version>
         <spark.version>${spark330.version}</spark.version>
         <spark.test.version>${spark.version}</spark.test.version>
