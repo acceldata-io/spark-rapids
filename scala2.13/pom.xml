@@ -915,6 +915,7 @@
     </profiles>
 
     <properties>
+        <odp.release.version>3.4.3.0-SNAPSHOT</odp.release.version>
         <delta33x.version>3.3.0</delta33x.version>
         <delta40x.version>4.0.0</delta40x.version>
         <delta40x.spark.artifactId>delta-spark_${scala.binary.version}</delta40x.spark.artifactId>
@@ -994,6 +995,7 @@
         <spark331.version>3.3.1</spark331.version>
         <spark332.version>3.3.2</spark332.version>
         <spark333.version>3.3.3</spark333.version>
+        <spark333odp.version>3.3.3.${odp.release.version}</spark333odp.version>
         <spark334.version>3.3.4</spark334.version>
         <spark340.version>3.4.0</spark340.version>
         <spark341.version>3.4.1</spark341.version>
@@ -1004,10 +1006,12 @@
         <spark350db143.version>3.5.0-databricks-143</spark350db143.version>
         <spark350.version>3.5.0</spark350.version>
         <spark351.version>3.5.1</spark351.version>
+        <spark351odp.version>3.5.1.${odp.release.version}</spark351odp.version>
         <spark352.version>3.5.2</spark352.version>
         <spark353.version>3.5.3</spark353.version>
         <spark354.version>3.5.4</spark354.version>
         <spark355.version>3.5.5</spark355.version>
+        <spark355odp.version>3.5.5.${odp.release.version}</spark355odp.version>
         <spark356.version>3.5.6</spark356.version>
         <spark357.version>3.5.7</spark357.version>
         <spark358.version>3.5.8</spark358.version>
@@ -1017,8 +1021,9 @@
         <spark402.version>4.0.2</spark402.version>
         <spark403.version>4.0.3</spark403.version>
         <spark411.version>4.1.1</spark411.version>
+        <spark411odp.version>4.1.1.${odp.release.version}</spark411odp.version>
         <spark412.version>4.1.2</spark412.version>
-        <spark412odp.version>4.1.2.3.4.3.0-1</spark412odp.version>
+        <spark412odp.version>4.1.2.${odp.release.version}</spark412odp.version>
         <mockito.version>3.12.4</mockito.version>
         <!-- 4.7.1 required: later versions auto-derive -release from -target,
              preventing JDK 17 boot classpath access with JDK 8 classfile output -->
