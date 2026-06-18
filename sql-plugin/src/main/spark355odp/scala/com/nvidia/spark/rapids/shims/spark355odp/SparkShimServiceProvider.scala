@@ -22,8 +22,8 @@ package com.nvidia.spark.rapids.shims.spark355odp
 import com.nvidia.spark.rapids.{AcceldataShimVersion, ShimVersion}
 
 object SparkShimServiceProvider {
-  val VERSION = AcceldataShimVersion(3, 5, 5, "3.3.6.3-101")
-  val ODP_BASE_VERSION = "3.5.5.3.3.6.3-101"
+  val VERSION = AcceldataShimVersion(3, 5, 5, "3.3.6.3-104")
+  val ODP_BASE_VERSION = "3.5.5.3.3.6.3-104"
 }
 
 class SparkShimServiceProvider extends com.nvidia.spark.rapids.SparkShimServiceProvider {
