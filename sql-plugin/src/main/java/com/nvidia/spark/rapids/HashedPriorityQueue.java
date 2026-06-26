@@ -137,7 +137,7 @@ public final class HashedPriorityQueue<T> extends AbstractQueue<T> {
     if (location == null) {
       return false;
     }
-    int heapIndex = location.getValue();
+    int heapIndex = location.intValue();
     fillHoleWithLast(heapIndex);
     return true;
   }
@@ -260,7 +260,7 @@ public final class HashedPriorityQueue<T> extends AbstractQueue<T> {
    */
   private boolean siftUp(T obj, MutableInt location) {
     boolean sifted = false;
-    int heapIndex = location.getValue();
+    int heapIndex = location.intValue();
     while (heapIndex > 0) {
       int parentIndex = getParentIndex(heapIndex);
       T parent = heap[parentIndex];
@@ -287,7 +287,7 @@ public final class HashedPriorityQueue<T> extends AbstractQueue<T> {
    */
   private boolean siftDown(T obj, MutableInt location) {
     boolean sifted = false;
-    int heapIndex = location.getValue();
+    int heapIndex = location.intValue();
     final int parentIndexEnd = getParentIndex(size + 1);
     while (heapIndex < parentIndexEnd) {
       final int leftChildIndex = 2 * heapIndex + 1;
