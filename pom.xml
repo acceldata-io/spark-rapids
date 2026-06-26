@@ -859,7 +859,7 @@
             <id>scala-2.12</id>
             <properties>
                 <scala.binary.version>2.12</scala.binary.version>
-                <scala.version>2.12.15</scala.version>
+                <scala.version>2.12.18</scala.version>
             </properties>
         </profile>
         <profile>
@@ -954,7 +954,7 @@
         <spark-rapids-hybrid.version>25.06.0</spark-rapids-hybrid.version>
         <scala.binary.version>2.12</scala.binary.version>
         <scala.recompileMode>incremental</scala.recompileMode>
-        <scala.version>2.12.15</scala.version>
+        <scala.version>2.12.18</scala.version>
         <!--
         -processing
         to suppress unactionable "No processor claimed any of these annotations"
