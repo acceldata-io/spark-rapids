@@ -16,6 +16,7 @@
 
 /*** spark-rapids-shim-json-lines
 {"spark": "333"}
+{"spark": "333odp"}
 spark-rapids-shim-json-lines ***/
 package com.nvidia.spark.rapids.shims.spark333
 

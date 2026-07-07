@@ -21,6 +21,7 @@
 {"spark": "403"}
 {"spark": "411"}
 {"spark": "412"}
+{"spark": "412odp"}
 spark-rapids-shim-json-lines ***/
 package com.nvidia.spark.rapids.shims
 
