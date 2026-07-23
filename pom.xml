@@ -840,6 +840,7 @@
                 <module>iceberg/iceberg-1-11-x</module>
             </modules>
         </profile>
+        <!--
         <profile>
             <id>release411</id>
             <activation>
@@ -955,6 +956,7 @@
                 </pluginManagement>
             </build>
         </profile>
+        -->
         <!-- #endif scala-2.13 -->
         <profile>
             <id>source-javadoc</id>

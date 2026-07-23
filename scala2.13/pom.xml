@@ -798,6 +798,44 @@
                 </pluginManagement>
             </build>
         </profile>
+        <profile>
+            <id>release412odp</id>
+            <activation>
+                <property>
+                    <name>buildver</name>
+                    <value>412odp</value>
+                </property>
+            </activation>
+            <properties>
+                <buildver>412odp</buildver>
+                <spark.version>${spark412odp.version}</spark.version>
+                <spark.test.version>${spark412odp.version}</spark.test.version>
+                <parquet.hadoop.version>1.13.1</parquet.hadoop.version>
+                <rapids.delta.artifactId1>rapids-4-spark-delta-41x</rapids.delta.artifactId1>
+                <iceberg.artifact.suffix>${spark40x.iceberg.artifact.suffix}</iceberg.artifact.suffix>
+                <iceberg.runtime.version>${iceberg.110x.version}</iceberg.runtime.version>
+                <slf4j.version>2.0.7</slf4j.version>
+                <scala.javac.args>-Xlint:all,-serial,-path,-try,-processing,-options|-Werror</scala.javac.args>
+            </properties>
+            <modules>
+                <module>delta-lake/delta-41x</module>
+                <module>iceberg/iceberg-stub</module>
+            </modules>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>net.alchim31.maven</groupId>
+                            <artifactId>scala-maven-plugin</artifactId>
+                            <configuration>
+                                <release combine.self="override"/>
+                                <target>${java.major.version}</target>
+                            </configuration>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+            </build>
+        </profile>
         <!-- #endif scala-2.13 -->
         <profile>
             <id>source-javadoc</id>
@@ -980,6 +1018,7 @@
         <spark403.version>4.0.3</spark403.version>
         <spark411.version>4.1.1</spark411.version>
         <spark412.version>4.1.2</spark412.version>
+        <spark412odp.version>4.1.2.3.4.3.0-1</spark412odp.version>
         <mockito.version>3.12.4</mockito.version>
         <!-- 4.7.1 required: later versions auto-derive -release from -target,
              preventing JDK 17 boot classpath access with JDK 8 classfile output -->
