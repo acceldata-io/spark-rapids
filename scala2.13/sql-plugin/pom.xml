@@ -185,8 +185,17 @@
                             value="${project.build.outputDirectory}/META-INF/services" />
                         <property name="serviceFile"
                             value="${servicesDir}/com.nvidia.spark.rapids.SparkShimServiceProvider"/>
+                        <!-- ODP classifiers (e.g. spark358odp) share shim sources/packages with
+                             their non-odp base (e.g. spark358), so strip the "odp" suffix before
+                             deriving the shim provider's package name. -->
+                        <propertyregex property="shimBasePackage"
+                            input="${spark.version.classifier}"
+                            regexp="^(.*)odp$"
+                            select="\1"
+                            defaultValue="${spark.version.classifier}"
+                            casesensitive="true"/>
                         <property name="shimServiceClass"
-                            value="com.nvidia.spark.rapids.shims.${spark.version.classifier}.SparkShimServiceProvider"/>
+                            value="com.nvidia.spark.rapids.shims.${shimBasePackage}.SparkShimServiceProvider"/>
                         <ac:if xmlns:ac="antlib:net.sf.antcontrib">
                             <available file="${serviceFile}" type="file"/>
                             <then>

@@ -18,7 +18,7 @@
 {"spark": "412"}
 {"spark": "412odp"}
 spark-rapids-shim-json-lines ***/
-package com.nvidia.spark.rapids.shims.spark412odp
+package com.nvidia.spark.rapids.shims.spark412
 
 import com.nvidia.spark.rapids.{AcceldataShimVersion, ShimVersion}
 
