@@ -30,7 +30,7 @@ class SparkShimsSuite extends AnyFunSuite with FQSuiteName {
 
   test("shuffle manager class") {
     assert(ShimLoader.getRapidsShuffleManagerClass ===
-      classOf[com.nvidia.spark.rapids.spark355.RapidsShuffleManager].getCanonicalName)
+      classOf[com.nvidia.spark.rapids.spark355odp.RapidsShuffleManager].getCanonicalName)
   }
 
 }
