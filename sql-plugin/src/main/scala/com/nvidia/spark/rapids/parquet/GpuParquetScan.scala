@@ -570,7 +570,8 @@ protected case class GpuParquetFileFilterHandler(
     if (fileIO.isInstanceOf[HadoopFileIO]) {
       // We should remove this after https://github.com/NVIDIA/spark-rapids/issues/13306 is
       // implemented.
-      val result = PerfIO.readParquetFooterBuffer(filePath, conf, verifyParquetMagic)
+      val verifyParquetMagicFn: (Path, Array[Byte]) => Unit = verifyParquetMagic
+      val result = PerfIO.readParquetFooterBuffer(filePath, conf, verifyParquetMagicFn)
       val scheme = filePath.toUri.getScheme
       if (scheme != null && scheme.startsWith("s3")) {
         GpuTaskMetrics.get.recordPerfioS3BackendOnce()
