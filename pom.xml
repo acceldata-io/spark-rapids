@@ -1006,7 +1006,7 @@
     </profiles>
 
     <properties>
-        <odp.release.version>3.3.6.5-SNAPSHOT</odp.release.version>
+        <odp.release.version>3.3.6.501-SNAPSHOT</odp.release.version>
         <delta33x.version>3.3.0</delta33x.version>
         <delta40x.version>4.0.0</delta40x.version>
         <!-- start dyn.shim properties -->
