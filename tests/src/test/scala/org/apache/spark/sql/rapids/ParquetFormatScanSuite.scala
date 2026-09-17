@@ -29,6 +29,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.parquet.hadoop.ParquetWriter
 import org.apache.parquet.hadoop.api.WriteSupport
 import org.apache.parquet.hadoop.api.WriteSupport.WriteContext
+import org.apache.parquet.hadoop.util.HadoopOutputFile
 import org.apache.parquet.io.api.{Binary, RecordConsumer}
 import org.apache.parquet.schema.{MessageType, MessageTypeParser}
 import org.scalatest.concurrent.Eventually
@@ -137,12 +138,14 @@ class ParquetFormatScanSuite extends SparkQueryCompareTestSuite with Eventually 
      * Avro - but for raw Parquet writing we must create our own builder.
      */
     class ParquetWriterBuilder() extends
-        ParquetWriter.Builder[RecordConsumer => Unit, ParquetWriterBuilder](new Path(path)) {
+        ParquetWriter.Builder[RecordConsumer => Unit, ParquetWriterBuilder]() {
       override def getWriteSupport(conf: Configuration) = testWriteSupport
 
       override def self() = this
     }
-    val parquetWriter = new ParquetWriterBuilder().build()
+    val parquetWriter = new ParquetWriterBuilder()
+        .withFile(HadoopOutputFile.fromPath(new Path(path), new Configuration()))
+        .build()
     try recordWriters.foreach(parquetWriter.write) finally parquetWriter.close()
   }
 
