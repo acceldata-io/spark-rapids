@@ -20,6 +20,7 @@ import java.io.File
 import java.sql.{Date, Timestamp}
 import java.time.LocalDateTime
 
+import scala.annotation.nowarn
 import scala.collection.JavaConverters.mapAsJavaMapConverter
 import scala.concurrent.duration._
 
@@ -136,6 +137,7 @@ class ParquetFormatScanSuite extends SparkQueryCompareTestSuite with Eventually 
      * the writer is deprecated and should be done through a builder. The default builders include
      * Avro - but for raw Parquet writing we must create our own builder.
      */
+    @nowarn("cat=deprecation")
     class ParquetWriterBuilder() extends
         ParquetWriter.Builder[RecordConsumer => Unit, ParquetWriterBuilder](new Path(path)) {
       override def getWriteSupport(conf: Configuration) = testWriteSupport
